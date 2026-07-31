@@ -30,9 +30,25 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        {{-- Favicons --}}
+        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+        <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+        <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+        <link rel="manifest" href="/site.webmanifest">
+        <meta name="theme-color" content="#00956E">
+
+        {{-- Global SEO defaults --}}
+        <meta name="author" content="Women Chamber of Commerce & Industry, Karachi">
+        <meta name="robots" content="index, follow">
+        <meta name="googlebot" content="index, follow">
+        <meta property="og:site_name" content="WCCIK Membership Portal">
+        <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
+        <meta property="og:locale:alternate" content="{{ app()->getLocale() === 'en' ? 'ur' : 'en' }}">
+        <meta name="twitter:card" content="summary">
+        <meta name="twitter:site" content="@WCCIK">
+        <meta name="geo.region" content="PK-SD">
+        <meta name="geo.placename" content="Karachi, Pakistan">
 
         @fonts
 

@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { useTranslation } from '@/composables/useTranslation';
 
 const { t, isUrdu } = useTranslation();
+const page = usePage();
+const appUrl = (page.props as Record<string, unknown>).appUrl as string ?? '';
+
+const metaDescription =
+    'Apply for new membership or renew your existing membership at the Women Chamber of Commerce & Industry, Karachi (WCCIK). Submit your application online and track your status.';
 
 function switchLocale() {
     router.post(
@@ -14,7 +19,26 @@ function switchLocale() {
 </script>
 
 <template>
-    <Head :title="t('site_name')" />
+    <Head :title="t('site_name')">
+        <link rel="canonical" :href="appUrl + '/'" />
+        <link rel="alternate" hreflang="en" :href="appUrl + '/'" />
+        <link rel="alternate" hreflang="ur" :href="appUrl + '/'" />
+        <link rel="alternate" hreflang="x-default" :href="appUrl + '/'" />
+        <meta name="description" :content="metaDescription" />
+        <meta name="keywords" content="WCCIK, Women Chamber of Commerce, Karachi, membership, business, Pakistan, WCCI" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" :content="t('site_name')" />
+        <meta property="og:description" :content="metaDescription" />
+        <meta property="og:url" :content="appUrl + '/'" />
+        <meta property="og:image" :content="appUrl + '/favicon-512.png'" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta property="og:image:alt" content="WCCIK Logo" />
+        <meta name="twitter:title" :content="t('site_name')" />
+        <meta name="twitter:description" :content="metaDescription" />
+        <meta name="twitter:image" :content="appUrl + '/favicon-512.png'" />
+        <meta name="twitter:image:alt" content="WCCIK Logo" />
+    </Head>
 
     <div
         :dir="isUrdu() ? 'rtl' : 'ltr'"
