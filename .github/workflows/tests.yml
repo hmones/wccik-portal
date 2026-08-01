@@ -1,9 +1,7 @@
-name: tests
+name: CI
 
 on:
   push:
-    branches:
-      - main
   pull_request:
 
 permissions:
@@ -34,5 +32,17 @@ jobs:
       - name: Setup Application
         run: composer setup
 
-      - name: Run CI Checks
-        run: composer ci:check
+      - name: PHP Lint (Pint)
+        run: vendor/bin/pint --test
+
+      - name: JS Lint (ESLint)
+        run: npm run lint:check
+
+      - name: JS Format (Prettier)
+        run: npm run format:check
+
+      - name: TypeScript check
+        run: npm run types:check
+
+      - name: Run Tests
+        run: php artisan test --compact

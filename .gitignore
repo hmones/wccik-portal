@@ -31,3 +31,4 @@ yarn-error.log
 /.zed
 .claude/settings.local.json
 .claude/skills/
+.claude/worktrees/

@@ -10,12 +10,12 @@ Source of truth: WCCIK user journey and the three WCCIK PDF forms shared for thi
 Build the first working version of the website so WCCIK can collect member information, let users download the required forms, and let admins review applications, approve or reject them, record payment verification, and generate membership IDs.
 
 ### Public Website Navigation
-Add a **Membership** tab with a dropdown containing:
+✅Add a **Membership** two cards containing:
 - **New Member**
 - **Renew Membership**
 
 ### New Member Flow
-When the user selects **New Member**, show an online form that collects the required information from Annex 1:
+✅ When the user selects **New Member**, show an online form that collects the required information from Annex 1:
 - Authorized representative name: required
 - Company/firm name
 - Company classification/status: Proprietorship, Partnership, Private Ltd. Co., Public Ltd. Co., AOP
