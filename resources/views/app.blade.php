@@ -22,11 +22,11 @@
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
-                background-color: oklch(1 0 0);
+                background-color: #ffffff;
             }
 
             html.dark {
-                background-color: oklch(0.145 0 0);
+                background-color: #0a0f1a;
             }
         </style>
 
@@ -36,7 +36,8 @@
         <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
         <link rel="manifest" href="/site.webmanifest">
-        <meta name="theme-color" content="#00956E">
+        <meta name="theme-color" content="#1C4C81" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#0A0F1A" media="(prefers-color-scheme: dark)">
 
         {{-- Global SEO defaults --}}
         <meta name="author" content="Women Chamber of Commerce & Industry, Karachi">

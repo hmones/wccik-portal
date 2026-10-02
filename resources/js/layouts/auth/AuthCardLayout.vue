@@ -17,34 +17,48 @@ defineProps<{
 </script>
 
 <template>
+    <a href="#auth-content" class="skip-link">Skip to main content</a>
+
     <div
-        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10"
+        class="relative flex min-h-svh flex-col items-center justify-center gap-6 overflow-hidden bg-muted p-6 md:p-10"
     >
-        <div class="flex w-full max-w-md flex-col gap-6">
+        <div
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-0 -z-10"
+        >
+            <div
+                class="absolute top-0 left-1/2 h-96 w-[32rem] -translate-x-1/2 rounded-full bg-brand-teal/10 blur-3xl"
+            ></div>
+        </div>
+
+        <main
+            id="auth-content"
+            class="flex w-full max-w-md flex-col gap-6"
+            role="main"
+        >
             <Link
                 :href="home()"
                 class="flex items-center gap-2 self-center font-medium"
+                :aria-label="title || 'Home'"
             >
-                <div class="flex h-9 w-9 items-center justify-center">
-                    <AppLogoIcon
-                        class="size-9 fill-current text-black dark:text-white"
-                    />
+                <div
+                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy ring-1 ring-brand-navy/20 dark:bg-brand-teal/15 dark:text-brand-teal dark:ring-brand-teal/30"
+                >
+                    <AppLogoIcon class="size-6 fill-current" />
                 </div>
             </Link>
 
-            <div class="flex flex-col gap-6">
-                <Card class="rounded-xl">
-                    <CardHeader class="px-10 pt-8 pb-0 text-center">
-                        <CardTitle class="text-xl">{{ title }}</CardTitle>
-                        <CardDescription>
-                            {{ description }}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent class="px-10 py-8">
-                        <slot />
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+            <Card class="rounded-2xl border-border shadow-sm">
+                <CardHeader class="px-8 pt-8 pb-0 text-center sm:px-10">
+                    <CardTitle class="text-2xl font-semibold tracking-tight">{{
+                        title
+                    }}</CardTitle>
+                    <CardDescription>{{ description }}</CardDescription>
+                </CardHeader>
+                <CardContent class="px-8 py-8 sm:px-10">
+                    <slot />
+                </CardContent>
+            </Card>
+        </main>
     </div>
 </template>
