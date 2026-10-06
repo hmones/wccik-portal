@@ -73,7 +73,7 @@ return [
     |
     */
 
-    'home' => '/dashboard',
+    'home' => '/nova',
 
     /*
     |--------------------------------------------------------------------------
@@ -86,7 +86,7 @@ return [
     |
     */
 
-    'prefix' => '',
+    'prefix' => 'admin',
 
     'domain' => null,
 
@@ -161,7 +161,9 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registration is intentionally disabled — admin accounts are
+        // provisioned manually by an existing admin via tinker or seeder.
+        // Removing this closes GET/POST /admin/register.
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

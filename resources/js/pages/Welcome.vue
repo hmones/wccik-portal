@@ -1,13 +1,58 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { useTranslation } from '@/composables/useTranslation';
 
 const { t, isUrdu } = useTranslation();
 const page = usePage();
 const appUrl = ((page.props as Record<string, unknown>).appUrl as string) ?? '';
 
-const metaDescription =
-    'Apply for new membership or renew your existing membership at the Women Chamber of Commerce & Industry, Karachi (WCCIK). Submit your application online and track your status.';
+const pageTitle = computed(
+    () =>
+        t('welcome_meta_title') ||
+        'WCCIK Membership — Women Chamber of Commerce, Karachi',
+);
+const metaDescription = computed(
+    () =>
+        t('welcome_meta_description') ||
+        'Apply for new membership or renew your existing membership at the Women Chamber of Commerce & Industry, Karachi. Online application, status tracking, bilingual.',
+);
+const ogImage = appUrl + '/images/wccik-logo.png';
+const ogLocale = isUrdu() ? 'ur_PK' : 'en_PK';
+const ogLocaleAlt = isUrdu() ? 'en_PK' : 'ur_PK';
+
+const organizationJsonLd = computed(() =>
+    JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'Women Chamber of Commerce & Industry, Karachi',
+        alternateName: 'WCCIK',
+        url: appUrl + '/',
+        logo: appUrl + '/images/wccik-logo.png',
+        description:
+            'A professional chamber representing women-led businesses in Karachi, Pakistan. Supports members with trade advocacy, networking and professional services.',
+        address: {
+            '@type': 'PostalAddress',
+            streetAddress:
+                'A/10, 1st Floor, Cause Way Apartment, Causeway Belt, Plot L-194, Sector 6A, Mehran Town, Korangi Industrial Area',
+            addressLocality: 'Karachi',
+            addressRegion: 'Sindh',
+            postalCode: '74900',
+            addressCountry: 'PK',
+        },
+        contactPoint: [
+            {
+                '@type': 'ContactPoint',
+                telephone: '+92-329-226-4691',
+                contactType: 'customer service',
+                email: 'info@wccik.org.pk',
+                areaServed: 'PK',
+                availableLanguage: ['en', 'ur'],
+            },
+        ],
+        inLanguage: ['en', 'ur'],
+    }),
+);
 
 function switchLocale() {
     router.post(
@@ -19,28 +64,50 @@ function switchLocale() {
 </script>
 
 <template>
-    <Head :title="t('site_name')">
-        <link rel="canonical" :href="appUrl + '/'" />
-        <link rel="alternate" hreflang="en" :href="appUrl + '/'" />
-        <link rel="alternate" hreflang="ur" :href="appUrl + '/'" />
-        <link rel="alternate" hreflang="x-default" :href="appUrl + '/'" />
+    <Head :title="pageTitle">
+        <!-- Crawling -->
+        <meta name="robots" content="index, follow, max-image-preview:large" />
         <meta name="description" :content="metaDescription" />
-        <meta
-            name="keywords"
-            content="WCCIK, Women Chamber of Commerce, Karachi, membership, business, Pakistan, WCCI"
-        />
+
+        <!-- Canonical + hreflang (self-referencing, both locales, x-default) -->
+        <link rel="canonical" :href="appUrl + '/'" />
+        <link rel="alternate" hreflang="en-PK" :href="appUrl + '/'" />
+        <link rel="alternate" hreflang="ur-PK" :href="appUrl + '/'" />
+        <link rel="alternate" hreflang="x-default" :href="appUrl + '/'" />
+
+        <!-- Open Graph -->
         <meta property="og:type" content="website" />
-        <meta property="og:title" :content="t('site_name')" />
+        <meta property="og:site_name" content="WCCIK Membership Portal" />
+        <meta property="og:title" :content="pageTitle" />
         <meta property="og:description" :content="metaDescription" />
         <meta property="og:url" :content="appUrl + '/'" />
-        <meta property="og:image" :content="appUrl + '/favicon-512.png'" />
-        <meta property="og:image:width" content="512" />
-        <meta property="og:image:height" content="512" />
-        <meta property="og:image:alt" content="WCCIK Logo" />
-        <meta name="twitter:title" :content="t('site_name')" />
+        <meta property="og:locale" :content="ogLocale" />
+        <meta property="og:locale:alternate" :content="ogLocaleAlt" />
+        <meta property="og:image" :content="ogImage" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="1200" />
+        <meta
+            property="og:image:alt"
+            content="Women Chamber of Commerce & Industry, Karachi — logo"
+        />
+
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" :content="pageTitle" />
         <meta name="twitter:description" :content="metaDescription" />
-        <meta name="twitter:image" :content="appUrl + '/favicon-512.png'" />
-        <meta name="twitter:image:alt" content="WCCIK Logo" />
+        <meta name="twitter:image" :content="ogImage" />
+        <meta
+            name="twitter:image:alt"
+            content="Women Chamber of Commerce & Industry, Karachi — logo"
+        />
+
+        <!-- Structured data: rendered as a raw script tag via Inertia Head -->
+        <!-- eslint-disable-next-line vue/no-v-text-v-html-on-component -->
+        <component
+            :is="'script'"
+            type="application/ld+json"
+            v-html="organizationJsonLd"
+        />
     </Head>
 
     <a href="#main" class="skip-link">{{
@@ -82,10 +149,10 @@ function switchLocale() {
                     :aria-label="t('primary_navigation') || 'Primary'"
                 >
                     <a
-                        href="/login"
-                        class="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        href="/portal/sign-in"
+                        class="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                     >
-                        {{ t('admin_login') }}
+                        {{ t('portal_sign_in') || 'Sign in' }}
                     </a>
 
                     <button
@@ -202,7 +269,7 @@ function switchLocale() {
                                 {{ t('new_membership_desc') }}
                             </p>
                             <a
-                                href="/apply"
+                                href="/portal"
                                 class="mt-8 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-navy px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-navy-deep focus-visible:outline-offset-4 dark:bg-brand-teal dark:text-background dark:hover:bg-brand-teal-deep"
                             >
                                 {{ t('new_membership_cta') }}
@@ -256,8 +323,8 @@ function switchLocale() {
                                 {{ t('renewal_desc') }}
                             </p>
                             <a
-                                href="/renew"
-                                class="mt-8 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-teal-deep px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-teal focus-visible:outline-offset-4"
+                                href="/portal"
+                                class="mt-8 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-teal px-6 py-3 text-sm font-semibold text-black shadow-sm transition-all hover:bg-brand-teal-deep hover:text-white focus-visible:outline-offset-4"
                             >
                                 {{ t('renewal_cta') }}
                                 <svg
@@ -310,7 +377,7 @@ function switchLocale() {
                                 {{ t('check_status_desc') }}
                             </p>
                             <a
-                                href="/status"
+                                href="/portal"
                                 class="mt-8 inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted focus-visible:outline-offset-4"
                             >
                                 {{ t('check_status_cta') }}
@@ -329,6 +396,152 @@ function switchLocale() {
                                 </svg>
                             </a>
                         </article>
+                    </div>
+
+                    <!-- Manual application fallback — secondary, less prominent -->
+                    <div
+                        class="mt-10 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
+                    >
+                        <div
+                            class="flex flex-col gap-6 p-6 sm:flex-row sm:items-start sm:gap-8 sm:p-8"
+                        >
+                            <div
+                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground ring-1 ring-border"
+                                aria-hidden="true"
+                            >
+                                <svg
+                                    class="h-5 w-5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path
+                                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                    />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="12" y1="18" x2="12" y2="12" />
+                                    <polyline points="9 15 12 12 15 15" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p
+                                    class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                                    :class="isUrdu() ? 'text-right' : ''"
+                                >
+                                    {{ t('manual_app_eyebrow') }}
+                                </p>
+                                <h3
+                                    class="mt-2 text-lg font-semibold text-foreground"
+                                    :class="isUrdu() ? 'text-right' : ''"
+                                >
+                                    {{ t('manual_app_title') }}
+                                </h3>
+                                <p
+                                    class="mt-2 text-sm leading-relaxed text-muted-foreground"
+                                    :class="isUrdu() ? 'text-right' : ''"
+                                >
+                                    {{ t('manual_app_body') }}
+                                </p>
+
+                                <div
+                                    class="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+                                >
+                                    <a
+                                        href="/forms/wccik-new-member-form-2026.pdf"
+                                        download
+                                        class="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                                    >
+                                        <svg
+                                            aria-hidden="true"
+                                            class="h-4 w-4 text-muted-foreground"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <path
+                                                d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                            />
+                                            <polyline
+                                                points="7 10 12 15 17 10"
+                                            />
+                                            <line
+                                                x1="12"
+                                                y1="15"
+                                                x2="12"
+                                                y2="3"
+                                            />
+                                        </svg>
+                                        {{ t('manual_app_download_new') }}
+                                    </a>
+                                    <a
+                                        href="/forms/wccik-renewal-form-2026.pdf"
+                                        download
+                                        class="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                                    >
+                                        <svg
+                                            aria-hidden="true"
+                                            class="h-4 w-4 text-muted-foreground"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <path
+                                                d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                            />
+                                            <polyline
+                                                points="7 10 12 15 17 10"
+                                            />
+                                            <line
+                                                x1="12"
+                                                y1="15"
+                                                x2="12"
+                                                y2="3"
+                                            />
+                                        </svg>
+                                        {{ t('manual_app_download_renewal') }}
+                                    </a>
+                                    <a
+                                        href="/forms/wccik-specimen-signature-card-2026.pdf"
+                                        download
+                                        class="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    >
+                                        <svg
+                                            aria-hidden="true"
+                                            class="h-4 w-4"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <path
+                                                d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                            />
+                                            <polyline
+                                                points="7 10 12 15 17 10"
+                                            />
+                                            <line
+                                                x1="12"
+                                                y1="15"
+                                                x2="12"
+                                                y2="3"
+                                            />
+                                        </svg>
+                                        {{ t('manual_app_download_signature') }}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

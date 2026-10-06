@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     'update:modelValue': [value: string];
+    blur: [event: FocusEvent];
 }>();
 
 const focused = ref(false);
@@ -56,7 +57,12 @@ const describedBy = computed(() => {
                     : 'border-input hover:border-foreground/40 focus:border-brand-navy focus:ring-brand-navy/25 dark:focus:border-brand-teal dark:focus:ring-brand-teal/30'
             "
             @focus="focused = true"
-            @blur="focused = false"
+            @blur="
+                (e) => {
+                    focused = false;
+                    emit('blur', e);
+                }
+            "
             @input="
                 emit(
                     'update:modelValue',

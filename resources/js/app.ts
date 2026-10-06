@@ -5,15 +5,30 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'WCCIK Membership Portal';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    title: (title) => {
+        if (!title) {
+            return appName;
+        }
+
+        if (title === appName) {
+            return appName;
+        }
+
+        return `${title} · ${appName}`;
+    },
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
             case name === 'Apply':
             case name === 'ApplyConfirmation':
+            case name === 'PortalSignIn':
+            case name === 'PortalVerify':
+            case name === 'PortalDashboard':
+            case name === 'PortalApply':
+            case name === 'PortalRenew':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

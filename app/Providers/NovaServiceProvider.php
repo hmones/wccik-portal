@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Nova\Application;
 use App\Nova\Dashboards\Main;
+use App\Nova\EmailTemplate;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Fortify\Features;
 use Laravel\Nova\Dashboard;
@@ -56,12 +57,26 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
      *
      * This gate determines who can access Nova in non-local environments.
      */
+    /**
+     * Nova access is restricted to an explicit allowlist of admin emails
+     * from the NOVA_ADMIN_EMAILS env (comma-separated). In local dev we
+     * also admit the seeded test user so you can log in without extra
+     * config.
+     */
     protected function gate(): void
     {
-        Gate::define('viewNova', function (User $user) {
-            return in_array($user->email, [
-                //
-            ]);
+        Gate::define('viewNova', function (User $user): bool {
+            $raw = (string) env('NOVA_ADMIN_EMAILS', '');
+            $allowed = collect(explode(',', $raw))
+                ->map(fn ($email) => mb_strtolower(trim($email)))
+                ->filter()
+                ->all();
+
+            if (app()->environment('local') && empty($allowed)) {
+                $allowed[] = 'test@example.com';
+            }
+
+            return in_array(mb_strtolower($user->email), $allowed, strict: true);
         });
     }
 
@@ -75,6 +90,7 @@ class NovaServiceProvider extends NovaApplicationServiceProvider
         Nova::resources([
             \App\Nova\User::class,
             Application::class,
+            EmailTemplate::class,
         ]);
     }
 

@@ -168,22 +168,25 @@ return [
     */
 
     'brand' => [
-        'logo' => resource_path('img/nova-logo.svg'),
+        // Nova expects an inline-able SVG. We ship a small WCCIK wordmark.
+        // Replace resources/img/wccik-nova-logo.svg with a proper mark if the
+        // design team provides one.
+        'logo' => resource_path('img/wccik-nova-logo.svg'),
 
-        // Primary brand green: #00956E = hsl(164, 100%, 29%)
+        // Brand navy #1C4C81 = hsl(213, 64%, 31%) — primary admin accent.
         // Format: "R, G, B"
         'colors' => [
-            '50' => '230, 247, 242',
-            '100' => '179, 227, 213',
-            '200' => '128, 207, 184',
-            '300' => '77, 187, 155',
-            '400' => '26, 167, 126',
-            '500' => '0, 149, 110',
-            '600' => '0, 119, 88',
-            '700' => '0, 89, 66',
-            '800' => '0, 60, 44',
-            '900' => '0, 30, 22',
-            '950' => '0, 15, 11',
+            '50' => '239, 242, 247',
+            '100' => '221, 228, 239',
+            '200' => '178, 196, 222',
+            '300' => '127, 160, 199',
+            '400' => '80, 128, 184',
+            '500' => '28, 76, 129',
+            '600' => '23, 64, 108',
+            '700' => '19, 54, 88',
+            '800' => '16, 43, 71',
+            '900' => '12, 34, 55',
+            '950' => '8, 25, 40',
         ],
     ],
 
