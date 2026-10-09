@@ -16,11 +16,11 @@ class MarkAwaitingPayment extends Action
     use InteractsWithQueue;
     use Queueable;
 
-    public $name = 'Mark Awaiting Payment';
+    public $name = 'Resend payment instructions';
 
-    public $confirmButtonText = 'Request payment';
+    public $confirmButtonText = 'Resend payment instructions';
 
-    public $confirmText = 'This will email the applicant to request payment of the membership fee.';
+    public $confirmText = 'Resend the payment instructions for an already accepted form. This cannot accept a form or activate membership.';
 
     public function handle(ActionFields $fields, Collection $models): mixed
     {

@@ -40,7 +40,7 @@ class ApplicationFormTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /apply — happy path
+    // POST /apply, happy path
     // -------------------------------------------------------------------------
 
     public function test_valid_submission_creates_application_and_redirects(): void
@@ -93,7 +93,7 @@ class ApplicationFormTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /apply — honeypot
+    // POST /apply, honeypot
     // -------------------------------------------------------------------------
 
     public function test_honeypot_filled_does_not_create_application(): void
@@ -110,7 +110,7 @@ class ApplicationFormTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // POST /apply — validation failures
+    // POST /apply, validation failures
     // -------------------------------------------------------------------------
 
     public function test_missing_required_fields_returns_validation_errors(): void

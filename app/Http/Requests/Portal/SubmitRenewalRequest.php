@@ -5,6 +5,7 @@ namespace App\Http\Requests\Portal;
 use App\Enums\CompanyClassification;
 use App\Enums\Industry;
 use App\Enums\MembershipClass;
+use App\Enums\PaymentMethod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -44,6 +45,8 @@ class SubmitRenewalRequest extends FormRequest
             // proof here, hand a cheque to the admin at the office, or upload
             // via the portal later when status is Awaiting Payment.
             'payment_proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'payment_date' => ['nullable', 'required_with:payment_proof', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'payment_method' => ['nullable', 'required_with:payment_proof', Rule::enum(PaymentMethod::class)],
             'terms_confirmed' => ['required', 'accepted'],
         ];
     }

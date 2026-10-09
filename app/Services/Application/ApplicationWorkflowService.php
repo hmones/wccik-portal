@@ -4,279 +4,299 @@ namespace App\Services\Application;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\ApplicationType;
+use App\Enums\PaymentMethod;
+use App\Jobs\SendTemplatedMail;
 use App\Models\Application;
+use App\Models\EmailTemplate;
 use App\Models\Member;
-use App\Services\Mail\TemplatedMailService;
+use App\Models\User;
+use App\Services\Membership\MembershipIdGenerator;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Laravel\Nova\Notifications\NovaNotification;
+use Laravel\Nova\URL;
 
-/**
- * Admin workflow transitions. All transitions are atomic (DB transaction)
- * and emit a templated email keyed to the resulting status.
- */
 class ApplicationWorkflowService
 {
-    public function __construct(private readonly TemplatedMailService $mailer) {}
-
-    public function markAwaitingDocuments(Application $application): void
+    public function acceptForm(Application $application, string $paymentInstructions): void
     {
-        $this->transition(
-            $application,
-            ApplicationStatus::AwaitingDocuments,
-            'application_awaiting_documents',
-        );
-    }
+        DB::transaction(function () use ($application, $paymentInstructions): void {
+            $current = $this->lockedApplication($application);
+            $this->assertReviewable($current);
+            if (! $current->physical_form_received || ! $current->documents_received) {
+                throw ValidationException::withMessages([
+                    'application' => 'Receive the signed form and all supporting documents before accepting the form.',
+                ]);
+            }
+            if (trim($paymentInstructions) === '') {
+                throw ValidationException::withMessages(['payment_instructions' => 'Supply the approved fee and bank/payment instructions.']);
+            }
+            if ($current->admin_approved_at !== null && $current->payment_instructions === trim($paymentInstructions)) {
+                return;
+            }
 
-    public function markAwaitingPayment(Application $application): void
-    {
-        $this->transition(
-            $application,
-            ApplicationStatus::AwaitingPayment,
-            'application_awaiting_payment',
-        );
-    }
-
-    public function markReadyForApproval(Application $application): void
-    {
-        // Internal-only transition; no applicant-facing email.
-        DB::transaction(function () use ($application): void {
-            $application->update(['status' => ApplicationStatus::ReadyForApproval]);
-        });
-    }
-
-    /**
-     * Admin's "Approve" action.
-     *
-     * Branches on payment state:
-     *   payment_verified = true   → full approval right now; member activated,
-     *                               applicant gets the approval email.
-     *   payment_verified = false  → "docs approved, pay now" state. We record
-     *                               the admin's approval intent (admin_approved_at
-     *                               + admin_approved_until) and move the
-     *                               application to AwaitingPayment with the
-     *                               awaiting-payment email. The member record
-     *                               is NOT created or activated yet — that
-     *                               happens later in recordPaymentDecision()
-     *                               once payment is verified.
-     */
-    public function approve(
-        Application $application,
-        CarbonInterface $activeUntil,
-    ): void {
-        if ($application->payment_verified) {
-            $this->finaliseApproval($application, $activeUntil);
-
-            return;
-        }
-
-        // Docs approved, awaiting payment. Record the admin's intent so that
-        // when payment is eventually verified we can auto-finalise without
-        // asking the admin to pick the expiry date all over again.
-        DB::transaction(function () use ($application, $activeUntil): void {
-            $application->update([
-                'status' => ApplicationStatus::AwaitingPayment,
+            $current->update([
                 'admin_approved_at' => now(),
-                'admin_approved_until' => $activeUntil,
+                'payment_instructions' => trim($paymentInstructions),
+                'payment_verified' => false,
+                'status' => $this->hasCompletePayment($current)
+                    ? ApplicationStatus::ReadyForApproval : ApplicationStatus::AwaitingPayment,
             ]);
+            $this->notifyAfterCommit($current, 'application_form_accepted');
+            if ($this->hasCompletePayment($current)) {
+                $this->notifyAdminsOfPayment($current);
+            }
         });
-
-        if ($application->email) {
-            $this->mailer->send('application_awaiting_payment', $application->email, [
-                'applicant_name' => $application->authorized_representative_name ?? '',
-                'company_name' => $application->company_name ?? '',
-                'portal_url' => url('/portal'),
-            ]);
-        }
+        $application->refresh();
     }
 
-    /**
-     * Record a payment decision from an admin.
-     *
-     *   verified = true  → mark verified; if the admin had already approved
-     *                      the docs (admin_approved_at is set), finalise the
-     *                      approval right now using admin_approved_until —
-     *                      member is activated, approval email fires.
-     *                      Otherwise just advance from AwaitingPayment to
-     *                      ReadyForApproval so admin sees it in the queue.
-     *   verified = false → flip the flag off, bounce back to AwaitingPayment,
-     *                      send the awaiting-payment email.
-     */
+    public function recordPaymentSubmission(Application $application, string $path, string $date, string $method): void
+    {
+        DB::transaction(function () use ($application, $path, $date, $method): void {
+            $current = $this->lockedApplication($application);
+            $this->assertPaymentStage($current);
+            $details = Validator::make(['payment_date' => $date, 'payment_method' => $method], [
+                'payment_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+                'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
+            ])->validate();
+            $current->update([
+                ...$details,
+                'payment_proof_path' => $path,
+                'payment_verified' => false,
+                'payment_submitted_at' => now(),
+                'status' => ApplicationStatus::ReadyForApproval,
+            ]);
+            $this->notifyAdminsOfPayment($current);
+        });
+        $application->refresh();
+    }
+
+    private function hasCompletePayment(Application $application): bool
+    {
+        return filled($application->payment_proof_path) && $application->payment_date !== null && $application->payment_method !== null;
+    }
+
     public function recordPaymentDecision(
         Application $application,
         bool $verified,
         ?CarbonInterface $paymentDate = null,
         ?string $paymentMethod = null,
         ?string $notes = null,
+        ?CarbonInterface $activeUntil = null,
+        ?CarbonInterface $processedAt = null,
     ): void {
-        $shouldAutoFinalise = $verified
-            && $application->admin_approved_at !== null
-            && $application->admin_approved_until !== null;
+        DB::transaction(function () use ($application, $verified, $paymentDate, $paymentMethod, $notes, $activeUntil, $processedAt): void {
+            $current = $this->lockedApplication($application);
+            if ($current->isApproved() && $verified) {
+                return;
+            }
+            $this->assertPaymentStage($current);
+            if ($verified && ! filled($current->payment_proof_path)) {
+                throw ValidationException::withMessages([
+                    'payment_proof' => 'Upload the payment receipt before verifying payment, including receipts received at the office.',
+                ]);
+            }
 
-        DB::transaction(function () use ($application, $verified, $paymentDate, $paymentMethod, $notes, $shouldAutoFinalise): void {
-            $updates = [
+            $details = Validator::make([
+                'payment_date' => ($paymentDate ?? $current->payment_date)?->toDateString(),
+                'payment_method' => $paymentMethod ?? $current->payment_method?->value,
+            ], [
+                'payment_date' => [$verified ? 'required' : 'nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+                'payment_method' => [$verified ? 'required' : 'nullable', Rule::enum(PaymentMethod::class)],
+            ])->validate();
+
+            if ($verified) {
+                $expiry = $activeUntil ?? $current->admin_approved_until;
+                if ($expiry === null) {
+                    throw ValidationException::withMessages(['active_until' => 'Choose the membership expiry date.']);
+                }
+                $this->assertFutureExpiry($expiry);
+                $processed = Validator::make(['payment_date' => $details['payment_date'], 'processed_at' => ($processedAt ?? today())->toDateString()], [
+                    'processed_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:payment_date'],
+                ])->validate();
+            }
+
+            // Amend the supplied details first; changing them invalidates old verification.
+            $current->update($details);
+            $current->update([
                 'payment_verified' => $verified,
-                'payment_date' => $paymentDate,
                 'payment_notes' => $notes,
-            ];
-
-            if ($paymentMethod !== null) {
-                $updates['payment_method'] = $paymentMethod;
-            }
-
-            // Status transitions, in precedence order:
-            //  - rejecting payment → always back to AwaitingPayment
-            //  - verifying & no prior admin approval → ReadyForApproval
-            //  - verifying & prior approval → finalised below after update
-            if (! $verified && $application->status !== ApplicationStatus::Rejected) {
-                $updates['status'] = ApplicationStatus::AwaitingPayment;
-            } elseif ($verified && ! $shouldAutoFinalise) {
-                $updates['status'] = ApplicationStatus::ReadyForApproval;
-            }
-
-            $application->update($updates);
-        });
-
-        if ($shouldAutoFinalise) {
-            // Reload to pick up the fresh verified state before finalising.
-            $this->finaliseApproval(
-                $application->refresh(),
-                $application->admin_approved_until,
-            );
-
-            return;
-        }
-
-        if (! $verified && $application->email) {
-            $this->mailer->send('application_awaiting_payment', $application->email, [
-                'applicant_name' => $application->authorized_representative_name ?? '',
-                'company_name' => $application->company_name ?? '',
-                'portal_url' => url('/portal'),
+                'status' => $verified ? ApplicationStatus::ReadyForApproval : ApplicationStatus::AwaitingPayment,
             ]);
-        }
+
+            if ($verified) {
+                $current->update(['admin_approved_until' => $expiry, 'payment_processed_at' => $processed['processed_at']]);
+                $this->finaliseIfComplete($current);
+            } else {
+                $this->notifyAfterCommit($current, 'application_payment_correction', ['payment_notes' => $notes ?? 'Please supply valid payment proof.']);
+            }
+        });
+        $application->refresh();
     }
 
-    /**
-     * Internal: perform the full approval. Creates/links the member record,
-     * activates it, status → Approved, approval email fires.
-     */
-    private function finaliseApproval(Application $application, CarbonInterface $activeUntil): void
+    public function markAwaitingPayment(Application $application): void
     {
-        DB::transaction(function () use ($application, $activeUntil): void {
-            $member = $this->resolveMemberForApplication($application);
-            $member->active_until = $activeUntil;
-            $member->save();
-
-            // membership_id was already assigned at application creation and
-            // is write-protected by the model. On approval we just transition
-            // the status + stamp the admin-approval intent if it wasn't set
-            // (happens when payment was verified before admin clicked Approve).
-            $updates = ['status' => ApplicationStatus::Approved];
-            if ($application->admin_approved_at === null) {
-                $updates['admin_approved_at'] = now();
-                $updates['admin_approved_until'] = $activeUntil;
+        DB::transaction(function () use ($application): void {
+            $current = $this->lockedApplication($application);
+            $this->assertPaymentStage($current);
+            if ($current->payment_verified) {
+                throw ValidationException::withMessages(['payment' => 'Payment is already verified.']);
             }
-            $application->update($updates);
-
-            // For brand-new members, link the applicant so their next sign-in
-            // lands on the active_member dashboard state.
-            if ($application->applicant && $application->applicant->member_id === null) {
-                $application->applicant->update(['member_id' => $member->id]);
-            }
+            $current->update(['status' => $this->hasCompletePayment($current) ? ApplicationStatus::ReadyForApproval : ApplicationStatus::AwaitingPayment]);
+            $this->notifyAfterCommit($current, 'application_form_accepted');
         });
-
-        if ($application->email) {
-            $this->mailer->send('application_approved', $application->email, [
-                'applicant_name' => $application->authorized_representative_name ?? '',
-                'company_name' => $application->company_name ?? '',
-                'membership_id' => $application->membership_id ?? '',
-                'active_until' => $activeUntil->toFormattedDateString(),
-                'portal_url' => url('/portal'),
-            ]);
-        }
+        $application->refresh();
     }
 
     public function reject(Application $application, string $reason): void
     {
         DB::transaction(function () use ($application, $reason): void {
-            $application->update([
+            $current = $this->lockedApplication($application);
+            if ($current->isRejected()) {
+                return;
+            }
+            $this->assertReviewable($current);
+            $current->update([
                 'status' => ApplicationStatus::Rejected,
                 'rejection_reason' => $reason,
+                'admin_approved_at' => null,
+                'admin_approved_until' => null,
             ]);
+            $this->notifyAfterCommit($current, 'application_rejected', ['rejection_reason' => $reason]);
         });
+        $application->refresh();
+    }
 
-        if ($application->email) {
-            $this->mailer->send('application_rejected', $application->email, [
-                'applicant_name' => $application->authorized_representative_name ?? '',
-                'company_name' => $application->company_name ?? '',
-                'rejection_reason' => $reason,
+    private function lockedApplication(Application $application): Application
+    {
+        return Application::query()->lockForUpdate()->findOrFail($application->id);
+    }
+
+    private function assertReviewable(Application $application): void
+    {
+        if (! $application->canBeReviewed()) {
+            throw ValidationException::withMessages([
+                'application' => 'Only submitted, pending applications can be reviewed.',
             ]);
         }
     }
 
-    private function transition(
-        Application $application,
-        ApplicationStatus $status,
-        string $templateKey,
-    ): void {
-        DB::transaction(function () use ($application, $status): void {
-            $application->update(['status' => $status]);
-        });
+    private function assertPaymentStage(Application $application): void
+    {
+        if (! $application->canSubmitPayment()) {
+            throw ValidationException::withMessages(['payment' => 'Payment is available only after the office accepts the form and documents.']);
+        }
+    }
 
+    private function assertFutureExpiry(CarbonInterface $activeUntil): void
+    {
+        if ($activeUntil->toDateString() <= today()->toDateString()) {
+            throw ValidationException::withMessages([
+                'active_until' => 'Choose a future membership expiry date before completing approval.',
+            ]);
+        }
+    }
+
+    // Called inside the locked transaction so payment processing activates once.
+    private function finaliseIfComplete(Application $application): void
+    {
+        if (! $application->physical_form_received || ! $application->documents_received
+            || $application->admin_approved_at === null || $application->admin_approved_until === null
+            || ! $application->payment_verified || ! filled($application->payment_proof_path)
+            || $application->payment_date === null || $application->payment_method === null) {
+            return;
+        }
+
+        $this->assertFutureExpiry($application->admin_approved_until);
+        $member = $this->resolveMemberForApplication($application);
+        $member->fill($this->memberInformation($application));
+        $member->active_until = $application->admin_approved_until;
+        $member->save();
+
+        $application->update(['status' => ApplicationStatus::Approved]);
+        if ($application->applicant && $application->applicant->member_id === null) {
+            $application->applicant->update(['member_id' => $member->id]);
+        }
+
+        $variables = [
+            'membership_id' => $member->membership_number,
+            'active_until' => $application->admin_approved_until->toFormattedDateString(),
+            'payment_processed_at' => $application->payment_processed_at->toFormattedDateString(),
+        ];
+        $this->notifyAfterCommit($application, 'application_approved', $variables);
+        $this->notifyAfterCommit($application, 'membership_certificate_collection', $variables);
+    }
+
+    public function notifyAdminsOfPayment(Application $application): void
+    {
+        $adminUrl = url('/'.trim((string) config('nova.path'), '/').'/resources/applications/'.$application->id);
+        foreach (User::all() as $admin) {
+            if (! Gate::forUser($admin)->allows('viewNova')) {
+                continue;
+            }
+            $admin->notify(NovaNotification::make()
+                ->message('Payment submitted for '.($application->company_name ?? 'application #'.$application->id).'. Review the receipt and create membership.')
+                ->action('Review payment', URL::remote($adminUrl))
+                ->icon('currency-dollar')->type('info'));
+            $variables = [
+                'applicant_name' => $application->authorized_representative_name ?? '',
+                'company_name' => $application->company_name ?? '',
+                'cnic' => $application->cnic ?? '',
+                'payment_date' => $application->payment_date?->toDateString(),
+                'payment_method' => $application->payment_method?->label(),
+                'admin_url' => $adminUrl,
+            ];
+            SendTemplatedMail::dispatch('admin_application_payment_submitted', $admin->email, $variables, 'en')->afterCommit();
+        }
+    }
+
+    /** @param array<string, scalar|null> $variables */
+    private function notifyAfterCommit(Application $application, string $key, array $variables = []): void
+    {
         if ($application->email) {
-            $this->mailer->send($templateKey, $application->email, [
+            if (! EmailTemplate::where('key', $key)->exists()) {
+                throw ValidationException::withMessages(['email' => 'Email template '.$key.' is missing. Apply the workflow migration before continuing.']);
+            }
+            SendTemplatedMail::dispatch($key, $application->email, [
                 'applicant_name' => $application->authorized_representative_name ?? '',
                 'company_name' => $application->company_name ?? '',
                 'portal_url' => url('/portal'),
-            ]);
+                'payment_instructions' => $application->payment_instructions ?? '',
+                ...$variables,
+            ], app()->getLocale())->afterCommit();
         }
     }
 
-    /**
-     * For a renewal, return the existing linked member. For a new-member
-     * approval, create a Member row from the application data and link it.
-     */
+    /** @return array<string, mixed> */
+    private function memberInformation(Application $application): array
+    {
+        $fields = array_diff((new Member)->getFillable(), ['membership_number', 'active_until']);
+
+        return $application->only($fields);
+    }
+
     private function resolveMemberForApplication(Application $application): Member
     {
         if ($application->applicant?->member) {
             return $application->applicant->member;
         }
-
-        if ($application->type === ApplicationType::Renewal && $application->existing_membership_number) {
+        if ($application->type === ApplicationType::Renewal) {
             $member = Member::where('membership_number', $application->existing_membership_number)->first();
-            if ($member !== null) {
-                return $member;
+            if ($member === null) {
+                throw ValidationException::withMessages(['application' => 'The membership being renewed could not be found.']);
             }
+
+            return $member;
         }
 
-        // Create a fresh member record from the application snapshot. The new
-        // member inherits the membership_id that was assigned to the
-        // application at creation — that is the canonical WCCIK ID.
-        $member = Member::create([
-            'membership_number' => $application->membership_id,
-            'membership_class' => $application->membership_class?->value,
-            'authorized_representative_name' => $application->authorized_representative_name ?? '',
-            'company_name' => $application->company_name ?? '',
-            'email' => $application->email ?? '',
-            'website' => $application->website,
-            'established_year' => $application->established_year,
-            'industry' => $application->industry?->value,
-            'company_classification' => $application->company_classification?->value,
-            'cnic' => $application->cnic ?? '',
-            'cnic_expiry_date' => $application->cnic_expiry_date,
-            'turnover_pkr' => $application->turnover_pkr,
-            'employees_count' => $application->employees_count,
-            'ntn_number' => $application->ntn_number,
-            'sales_tax_no' => $application->sales_tax_no,
-            'address' => $application->address,
-            'postal_code' => $application->postal_code,
-            'district' => $application->district,
-            'phone' => $application->phone,
-            'cell' => $application->cell ?? '',
-            'whatsapp' => $application->whatsapp,
-            'alternate_no' => $application->alternate_no,
-            'other_chamber_memberships' => $application->other_chamber_memberships,
-        ]);
+        if (! filled($application->membership_id)) {
+            $application->update(['membership_id' => app(MembershipIdGenerator::class)->generate()]);
+        }
 
-        return $member;
+        return new Member(['membership_number' => $application->membership_id]);
     }
 }

@@ -143,15 +143,6 @@ const classificationOptions = [
 ];
 
 const submitForm = useForm({});
-const paymentProof = ref<File | null>(null);
-const paymentProofName = ref<string>('');
-
-function onPaymentProofChange(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0] ?? null;
-    paymentProof.value = file;
-    paymentProofName.value = file?.name ?? '';
-}
-
 function onBlur() {
     void flushNow();
 }
@@ -168,10 +159,6 @@ async function submit() {
         } else if (v !== null && v !== undefined) {
             payload.append(k, String(v));
         }
-    }
-
-    if (paymentProof.value) {
-        payload.append('payment_proof', paymentProof.value);
     }
 
     router.post('/portal/apply/submit', payload, {
@@ -193,7 +180,12 @@ async function submit() {
 <template>
     <Head :title="t('apply_title')" />
 
-    <PublicShell back-href="/portal" :back-label="t('portal_dashboard_title')">
+    <PublicShell
+        back-href="/portal"
+        :back-label="t('portal_dashboard_title')"
+        show-sign-out
+        :before-sign-out="flushNow"
+    >
         <section
             class="relative overflow-hidden bg-brand-navy-deep px-4 py-14 text-white sm:px-6 sm:py-16"
         >
@@ -231,6 +223,7 @@ async function submit() {
                     class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2 text-sm"
                     role="status"
                     aria-live="polite"
+                    v-if="saveLabel !== ''"
                 >
                     <span class="flex items-center gap-2 text-muted-foreground">
                         <svg
@@ -793,67 +786,11 @@ async function submit() {
                             />
                         </fieldset>
 
-                        <!-- Payment proof (optional at submission) -->
-                        <fieldset class="mb-10">
-                            <legend
-                                class="mb-6 w-full border-b border-border pb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-                                :class="isUrdu() ? 'text-right' : ''"
-                            >
-                                {{ t('portal_apply_payment_section') }}
-                            </legend>
-                            <p
-                                class="mb-4 text-sm text-muted-foreground"
-                                :class="isUrdu() ? 'text-right' : ''"
-                            >
-                                {{ t('portal_apply_payment_body') }}
-                            </p>
-                            <label
-                                for="payment_proof"
-                                class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 p-6 text-center transition-colors hover:border-brand-navy/40 hover:bg-muted dark:hover:border-brand-teal/40"
-                            >
-                                <svg
-                                    aria-hidden="true"
-                                    class="h-8 w-8 text-muted-foreground"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.5"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path
-                                        d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-                                    />
-                                    <polyline points="17 8 12 3 7 8" />
-                                    <line x1="12" y1="3" x2="12" y2="15" />
-                                </svg>
-                                <span
-                                    class="text-sm font-medium text-foreground"
-                                >
-                                    {{
-                                        paymentProofName ||
-                                        t('field_payment_proof')
-                                    }}
-                                </span>
-                                <span class="text-xs text-muted-foreground">
-                                    {{ t('field_payment_proof_hint') }}
-                                </span>
-                                <input
-                                    id="payment_proof"
-                                    type="file"
-                                    accept="application/pdf,image/jpeg,image/png"
-                                    class="sr-only"
-                                    @change="onPaymentProofChange"
-                                />
-                            </label>
-                            <p
-                                v-if="submitErrors.payment_proof"
-                                class="mt-2 text-xs text-destructive"
-                                role="alert"
-                            >
-                                {{ submitErrors.payment_proof }}
-                            </p>
-                        </fieldset>
+                        <p
+                            class="mb-8 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
+                        >
+                            {{ t('portal_payment_after_acceptance') }}
+                        </p>
 
                         <!-- Confirmation -->
                         <fieldset class="mb-10">

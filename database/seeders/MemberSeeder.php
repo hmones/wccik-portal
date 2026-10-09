@@ -95,7 +95,7 @@ class MemberSeeder extends Seeder
                 'whatsapp' => null,
                 'alternate_no' => '+923015551234',
                 'other_chamber_memberships' => 'KATI',
-                'active_until' => null, // never activated — e.g. awaiting first approval
+                'active_until' => null, // never activated, e.g. awaiting first approval
             ],
         );
     }

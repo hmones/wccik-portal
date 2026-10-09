@@ -1,7 +1,7 @@
 {
     "name": "WCCIK Membership Portal",
     "short_name": "WCCIK",
-    "description": "Women Chamber of Commerce & Industry, Karachi — Online Membership Portal",
+    "description": "Women Chamber of Commerce & Industry, Karachi, Online Membership Portal",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",

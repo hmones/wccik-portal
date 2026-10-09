@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import PaymentDetailsFields from '@/components/PaymentDetailsFields.vue';
 import PublicShell from '@/components/PublicShell.vue';
 import { useTranslation } from '@/composables/useTranslation';
 
@@ -20,6 +21,15 @@ type ApplicationPayload = {
     submitted_at: string | null;
     updated_at: string;
     has_payment_proof: boolean;
+    payment_verified: boolean;
+    can_submit_payment: boolean;
+    payment_instructions: string | null;
+    payment_submitted_at: string | null;
+    payment_date: string | null;
+    payment_method: string | null;
+    information_approved: boolean;
+    physical_form_received: boolean;
+    documents_received: boolean;
 };
 
 type MemberPayload = {
@@ -29,9 +39,11 @@ type MemberPayload = {
     email: string;
     membership_class: string | null;
     active_until: string | null;
+    payment_processed_at: string | null;
 };
 
 const props = defineProps<{
+    paymentMethods: { value: string; label: string }[];
     applicant: {
         email: string;
         name: string | null;
@@ -62,6 +74,9 @@ const flash = computed(
 
 const paymentProofFile = ref<File | null>(null);
 const paymentUploadError = ref<string | null>(null);
+const paymentDate = ref(props.journey.application?.payment_date ?? '');
+const paymentMethod = ref(props.journey.application?.payment_method ?? '');
+const paymentDetailErrors = ref<Record<string, string>>({});
 const paymentUploadingProgress = ref<number | null>(null);
 
 function onPaymentProofChange(e: Event) {
@@ -79,6 +94,9 @@ function uploadPaymentProof() {
 
     const payload = new FormData();
     payload.append('payment_proof', paymentProofFile.value);
+    payload.append('payment_date', paymentDate.value);
+    payload.append('payment_method', paymentMethod.value);
+    paymentDetailErrors.value = {};
 
     router.post('/portal/application/payment-proof', payload, {
         forceFormData: true,
@@ -87,19 +105,22 @@ function uploadPaymentProof() {
             paymentUploadingProgress.value = progress?.percentage ?? null;
         },
         onError: (errors) => {
+            paymentDetailErrors.value = errors as Record<string, string>;
             paymentUploadError.value =
                 (errors as Record<string, string>).payment_proof ||
                 t('portal_payment_upload_error') ||
-                'Could not upload — please try again.';
+                'Could not upload, please try again.';
+        },
+        onSuccess: () => {
+            paymentProofFile.value = null;
+            paymentDate.value = props.journey.application?.payment_date ?? '';
+            paymentMethod.value =
+                props.journey.application?.payment_method ?? '';
         },
         onFinish: () => {
             paymentUploadingProgress.value = null;
         },
     });
-}
-
-function signOut() {
-    router.post('/portal/sign-out');
 }
 
 function formatDate(iso: string | null): string {
@@ -118,10 +139,10 @@ function formatDate(iso: string | null): string {
 <template>
     <Head :title="t('portal_dashboard_title')" />
 
-    <PublicShell>
+    <PublicShell show-sign-out>
         <section class="px-4 py-10 sm:px-6 sm:py-14">
             <div class="mx-auto max-w-3xl space-y-8">
-                <!-- Header: identity + sign out -->
+                <!-- Signed-in identity -->
                 <div
                     class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                 >
@@ -141,13 +162,6 @@ function formatDate(iso: string | null): string {
                             {{ props.applicant.email }}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        class="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                        @click="signOut"
-                    >
-                        {{ t('portal_sign_out') }}
-                    </button>
                 </div>
 
                 <!-- 1. new_applicant → start application -->
@@ -207,7 +221,11 @@ function formatDate(iso: string | null): string {
                                     ],
                                 ]"
                             >
-                                {{ props.journey.application.status_label }}
+                                {{
+                                    t(
+                                        `portal_status_${props.journey.application.status}`,
+                                    )
+                                }}
                             </span>
                             <h2
                                 class="mt-3 text-xl font-semibold text-foreground"
@@ -257,12 +275,72 @@ function formatDate(iso: string | null): string {
                             {{ t('portal_status_locked_hint') }}
                         </p>
 
-                        <!-- Awaiting payment: upload card is the primary CTA -->
+                        <ul
+                            class="space-y-2 rounded-lg border border-border bg-background p-5 text-sm"
+                            aria-label="Application progress"
+                        >
+                            <li>
+                                {{ t('portal_progress_form') }}:
+                                {{
+                                    t(
+                                        props.journey.application
+                                            .physical_form_received
+                                            ? 'portal_progress_received'
+                                            : 'portal_progress_pending',
+                                    )
+                                }}
+                            </li>
+                            <li>
+                                {{ t('portal_progress_documents') }}:
+                                {{
+                                    t(
+                                        props.journey.application
+                                            .documents_received
+                                            ? 'portal_progress_received'
+                                            : 'portal_progress_pending',
+                                    )
+                                }}
+                            </li>
+                            <li>
+                                {{ t('portal_progress_information') }}:
+                                {{
+                                    t(
+                                        props.journey.application
+                                            .information_approved
+                                            ? 'portal_progress_approved'
+                                            : 'portal_progress_pending',
+                                    )
+                                }}
+                            </li>
+                            <li>
+                                {{ t('portal_progress_payment') }}:
+                                {{
+                                    t(
+                                        props.journey.application
+                                            .payment_verified
+                                            ? 'portal_progress_verified'
+                                            : props.journey.application
+                                                    .has_payment_proof
+                                              ? 'portal_progress_receipt_uploaded'
+                                              : props.journey.application
+                                                      .can_submit_payment
+                                                ? 'portal_progress_receipt_needed'
+                                                : 'portal_payment_waiting_for_acceptance',
+                                    )
+                                }}
+                            </li>
+                        </ul>
+
+                        <p
+                            v-if="!props.journey.application.can_submit_payment"
+                            class="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
+                        >
+                            {{ t('portal_payment_after_acceptance') }}
+                        </p>
+
+                        <!-- Payment opens after office acceptance. -->
                         <div
-                            v-if="
-                                props.journey.application.status ===
-                                'awaiting_payment'
-                            "
+                            v-if="props.journey.application.can_submit_payment"
                             class="rounded-lg border-2 border-brand-navy bg-brand-navy/5 p-5 dark:border-brand-teal dark:bg-brand-teal/10"
                         >
                             <h3 class="text-sm font-semibold text-foreground">
@@ -271,6 +349,26 @@ function formatDate(iso: string | null): string {
                             <p class="mt-2 text-sm text-muted-foreground">
                                 {{ t('portal_payment_upload_body') }}
                             </p>
+                            <div
+                                class="mt-4 rounded-lg border border-border bg-background p-4"
+                            >
+                                <h4 class="font-semibold">
+                                    {{ t('portal_payment_instructions_title') }}
+                                </h4>
+                                <p
+                                    class="mt-2 text-sm whitespace-pre-line text-foreground"
+                                >
+                                    {{
+                                        props.journey.application
+                                            .payment_instructions
+                                    }}
+                                </p>
+                                <p class="mt-3 text-sm text-muted-foreground">
+                                    {{
+                                        t('portal_collection_after_processing')
+                                    }}
+                                </p>
+                            </div>
 
                             <label
                                 for="payment_proof_upload"
@@ -312,6 +410,13 @@ function formatDate(iso: string | null): string {
                                 />
                             </label>
 
+                            <PaymentDetailsFields
+                                v-model:payment-date="paymentDate"
+                                v-model:payment-method="paymentMethod"
+                                :options="props.paymentMethods"
+                                :errors="paymentDetailErrors"
+                            />
+
                             <p
                                 v-if="paymentUploadError"
                                 class="mt-2 text-xs text-destructive"
@@ -332,6 +437,8 @@ function formatDate(iso: string | null): string {
                                 type="button"
                                 :disabled="
                                     !paymentProofFile ||
+                                    !paymentDate ||
+                                    !paymentMethod ||
                                     paymentUploadingProgress !== null
                                 "
                                 class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-navy-deep disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-teal dark:text-background dark:hover:bg-brand-teal-deep"
@@ -358,6 +465,40 @@ function formatDate(iso: string | null): string {
                                 {{ t('portal_checklist_body') }}
                             </p>
                             <ul class="space-y-2 text-sm">
+                                <li class="space-y-2">
+                                    <a
+                                        href="/portal/application/pdf"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-brand-navy bg-background px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-brand-navy hover:text-white dark:border-brand-teal dark:text-brand-teal dark:hover:bg-brand-teal dark:hover:text-background"
+                                    >
+                                        <svg
+                                            aria-hidden="true"
+                                            class="h-4 w-4"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <path
+                                                d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                            />
+                                            <polyline
+                                                points="7 10 12 15 17 10"
+                                            />
+                                            <line
+                                                x1="12"
+                                                y1="15"
+                                                x2="12"
+                                                y2="3"
+                                            />
+                                        </svg>
+                                        {{ t('portal_download_filled_pdf') }}
+                                    </a>
+                                    <p class="text-muted-foreground">
+                                        {{ t('portal_checklist_signed_form') }}
+                                    </p>
+                                </li>
                                 <li
                                     v-for="item in [
                                         t('portal_checklist_item_cnic'),
@@ -365,7 +506,12 @@ function formatDate(iso: string | null): string {
                                         t('portal_checklist_item_profile'),
                                         t('portal_checklist_item_tax'),
                                         t('portal_checklist_item_ntn'),
-                                        t('portal_checklist_item_fee'),
+                                        t(
+                                            props.journey.application.type ===
+                                                'renewal'
+                                                ? 'portal_checklist_item_fee_renewal'
+                                                : 'portal_checklist_item_fee',
+                                        ),
                                         t('portal_checklist_item_signature'),
                                     ]"
                                     :key="item"
@@ -393,30 +539,6 @@ function formatDate(iso: string | null): string {
                                 </li>
                             </ul>
                         </div>
-
-                        <!-- Download filled PDF -->
-                        <a
-                            href="/portal/application/pdf"
-                            class="inline-flex items-center gap-2 rounded-lg border border-brand-navy bg-background px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-brand-navy hover:text-white dark:border-brand-teal dark:text-brand-teal dark:hover:bg-brand-teal dark:hover:text-background"
-                        >
-                            <svg
-                                aria-hidden="true"
-                                class="h-4 w-4"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            >
-                                <path
-                                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-                                />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            {{ t('portal_download_filled_pdf') }}
-                        </a>
                     </div>
                 </div>
 
@@ -496,6 +618,18 @@ function formatDate(iso: string | null): string {
                             </dd>
                         </div>
                     </dl>
+                    <p
+                        v-if="props.journey.member.payment_processed_at"
+                        class="mt-5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
+                    >
+                        {{ t('portal_payment_processed_on') }}:
+                        {{
+                            formatDate(
+                                props.journey.member.payment_processed_at,
+                            )
+                        }}.
+                        {{ t('portal_collection_after_processing') }}
+                    </p>
                     <p
                         class="mt-5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
                     >

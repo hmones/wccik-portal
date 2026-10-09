@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Lenient autosave — every field is optional. Final validation is enforced
+ * Lenient autosave, every field is optional. Final validation is enforced
  * at submit via SubmitRenewalRequest.
  */
 class AutosaveRenewalRequest extends FormRequest

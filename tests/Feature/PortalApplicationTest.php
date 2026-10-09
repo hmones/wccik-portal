@@ -189,6 +189,10 @@ class PortalApplicationTest extends TestCase
                 ->where('journey.state', 'application_in_progress')
                 ->where('journey.application.company_name', 'Jane Co.')
                 ->where('journey.application.status', 'submitted')
+                ->where('journey.application.information_approved', false)
+                ->where('journey.application.payment_verified', false)
+                ->where('journey.application.physical_form_received', false)
+                ->where('journey.application.documents_received', false)
             );
     }
 
@@ -275,5 +279,35 @@ class PortalApplicationTest extends TestCase
             ->get(route('portal.apply'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('PortalApply')->where('draft', null));
+    }
+
+    public function test_submitted_application_rejects_stale_autosave_and_repeat_submission(): void
+    {
+        $applicant = $this->applicant();
+        $application = Application::factory()->create([
+            'applicant_id' => $applicant->id,
+            'type' => ApplicationType::NewMember,
+            'email' => $applicant->email,
+            'company_name' => 'Submitted company',
+        ]);
+        $this->actingAs($applicant, 'applicant')->postJson(route('portal.apply.autosave'), [
+            'company_name' => 'Unexpected change',
+        ])->assertForbidden();
+        $this->actingAs($applicant, 'applicant')->post(route('portal.apply.submit'), [
+            'membership_class' => 'corporate',
+            'industry' => 'services',
+            'authorized_representative_name' => 'Jane Doe',
+            'cnic' => '42101-1234567-8',
+            'company_name' => 'Unexpected change',
+            'company_classification' => 'proprietorship',
+            'address' => '123 Main St',
+            'district' => 'Karachi',
+            'cell' => '+923001234567',
+            'email' => $applicant->email,
+            'has_ntn' => false,
+            'terms_confirmed' => true,
+        ])->assertForbidden();
+        $this->assertDatabaseCount('applications', 1);
+        $this->assertEquals('Submitted company', $application->fresh()->company_name);
     }
 }

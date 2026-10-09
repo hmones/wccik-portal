@@ -45,6 +45,7 @@ class HandleInertiaRequests extends Middleware
             'locale' => fn () => app()->getLocale(),
             'translations' => fn () => trans('portal'),
             'appUrl' => config('app.url'),
+            'flash' => ['status' => fn () => $request->session()->get('status')],
         ];
     }
 }

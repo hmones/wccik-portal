@@ -18,19 +18,20 @@ class EmailTemplateSeeder extends Seeder
             $existing = EmailTemplate::where('key', $tpl['key'])->first();
 
             if ($existing === null) {
-                // Brand-new row — write everything, including subject/body.
+                // Brand-new row, write everything, including subject/body.
                 EmailTemplate::create($tpl);
 
                 continue;
             }
 
-            // Row exists — only refresh metadata, leave admin-edited copy alone.
+            // Row exists, only refresh metadata, leave admin-edited copy alone.
             $existing->update([
                 'name' => $tpl['name'],
                 'description' => $tpl['description'],
                 'available_variables' => $tpl['available_variables'],
             ]);
         }
+        $this->call(MembershipWorkflowEmailTemplateSeeder::class);
     }
 
     /**
@@ -48,8 +49,8 @@ class EmailTemplateSeeder extends Seeder
                     'expires_in_minutes' => 'How long the code is valid for.',
                     'email' => 'The email the code was sent to.',
                 ],
-                'subject_en' => 'WCCIK Portal — Sign-in Code',
-                'subject_ur' => 'ڈبلیو سی سی آئی پورٹل — سائن ان کوڈ',
+                'subject_en' => 'WCCIK Portal, Sign-in Code',
+                'subject_ur' => 'ڈبلیو سی سی آئی پورٹل, سائن ان کوڈ',
                 'body_en' => <<<'MD'
 # Sign in to the WCCIK Portal
 
@@ -77,7 +78,7 @@ MD,
             ],
             [
                 'key' => 'application_submitted',
-                'name' => 'Application submitted — acknowledgement',
+                'name' => 'Application submitted, acknowledgement',
                 'description' => 'Sent to applicants right after they submit a new membership application.',
                 'available_variables' => [
                     'applicant_name' => 'The applicant\'s representative name.',
@@ -117,14 +118,14 @@ MD,
             ],
             [
                 'key' => 'application_awaiting_documents',
-                'name' => 'Status — awaiting documents',
+                'name' => 'Status, awaiting documents',
                 'description' => 'Sent when an admin marks an application as awaiting physical documents.',
                 'available_variables' => [
                     'applicant_name' => 'The applicant\'s representative name.',
                     'company_name' => 'The company applied for.',
                 ],
-                'subject_en' => 'WCCIK — Documents required to continue your application',
-                'subject_ur' => 'ڈبلیو سی سی آئی — درخواست جاری رکھنے کے لیے دستاویزات درکار ہیں',
+                'subject_en' => 'WCCIK, Documents required to continue your application',
+                'subject_ur' => 'ڈبلیو سی سی آئی, درخواست جاری رکھنے کے لیے دستاویزات درکار ہیں',
                 'body_en' => <<<'MD'
 # We are waiting on your documents
 
@@ -147,44 +148,44 @@ MD,
 MD,
             ],
             [
-                'key' => 'application_awaiting_payment',
-                'name' => 'Status — awaiting payment',
+                'key' => 'application_payment_requested',
+                'name' => 'Payment proof requested',
                 'description' => 'Sent when an admin marks an application as awaiting payment. The body should point the applicant at the portal upload page.',
                 'available_variables' => [
                     'applicant_name' => 'The applicant\'s representative name.',
                     'company_name' => 'The company applied for.',
                     'portal_url' => 'Link to the portal dashboard where the applicant can upload payment proof.',
                 ],
-                'subject_en' => 'WCCIK — Documents approved, payment required to finalise',
-                'subject_ur' => 'ڈبلیو سی سی آئی — دستاویزات منظور، درخواست مکمل کرنے کے لیے ادائیگی درکار ہے',
+                'subject_en' => 'WCCIK, Payment proof required',
+                'subject_ur' => 'ڈبلیو سی سی آئی, ادائیگی کا ثبوت درکار ہے',
                 'body_en' => <<<'MD'
-# Documents approved — payment required to finalise
+# Payment proof required
 
 Hello {{ applicant_name }},
 
-Great news — your WCCIK application documents for **{{ company_name }}** have been approved by our team. The last step before your membership becomes active is payment of the membership fee.
+We need valid proof of payment of the membership fee for your WCCIK application for **{{ company_name }}**. This request does not confirm information approval.
 
 Please pay the fee and upload a copy of your payment proof via the portal:
 
 [Open the portal to upload your payment proof]({{ portal_url }})
 
-Accepted file types: PDF, JPG, PNG (max 5 MB). You can also deliver the receipt in person to the WCCIK office. Once we verify your payment, your membership will activate automatically and you will receive the approval email with your membership ID.
+Accepted file types: PDF, JPG, PNG (max 5 MB). You can also deliver the receipt in person to the WCCIK office. Membership activates only after the signed form and supporting documents are received and both your information and payment are approved. You will then receive an approval email with your membership number and expiry date.
 
 Thanks,
 Women Chamber of Commerce &amp; Industry, Karachi
 MD,
                 'body_ur' => <<<'MD'
-# دستاویزات منظور — درخواست مکمل کرنے کے لیے ادائیگی درکار ہے
+# ادائیگی کا ثبوت درکار ہے
 
 السلام علیکم {{ applicant_name }}،
 
-خوشخبری — **{{ company_name }}** کے لیے آپ کی ڈبلیو سی سی آئی درخواست کی دستاویزات ہماری ٹیم نے منظور کر لی ہیں۔ آپ کی ممبرشپ فعال ہونے سے پہلے صرف ممبرشپ فیس کی ادائیگی باقی ہے۔
+**{{ company_name }}** کے لیے آپ کی ڈبلیو سی سی آئی درخواست کی ممبرشپ فیس کی ادائیگی کا درست ثبوت درکار ہے۔ یہ درخواست معلومات کی منظوری کی تصدیق نہیں ہے۔
 
 براہ کرم فیس ادا کریں اور ادائیگی کا ثبوت پورٹل کے ذریعے اپ لوڈ کریں:
 
 [پورٹل کھولیں اور ادائیگی کا ثبوت اپ لوڈ کریں]({{ portal_url }})
 
-قابل قبول فائل اقسام: PDF، JPG، PNG (زیادہ سے زیادہ 5 MB)۔ آپ رسید ذاتی طور پر ڈبلیو سی سی آئی دفتر میں بھی جمع کروا سکتے ہیں۔ ادائیگی کی تصدیق ہوتے ہی آپ کی ممبرشپ خودکار طور پر فعال ہو جائے گی اور آپ کو ممبرشپ آئی ڈی کے ساتھ منظوری کی ای میل موصول ہو گی۔
+قابل قبول فائل اقسام: PDF، JPG، PNG (زیادہ سے زیادہ 5 MB)۔ آپ رسید ذاتی طور پر ڈبلیو سی سی آئی دفتر میں بھی جمع کروا سکتے ہیں۔ دستخط شدہ فارم اور معاون دستاویزات موصول ہونے اور معلومات اور ادائیگی دونوں کی منظوری کے بعد ممبرشپ فعال ہوگی۔ اس کے بعد آپ کو ممبرشپ نمبر اور اختتامی تاریخ کے ساتھ منظوری کی ای میل موصول ہوگی۔
 
 شکریہ،
 ویمن چیمبر آف کامرس اینڈ انڈسٹری، کراچی
@@ -193,7 +194,7 @@ MD,
             [
                 'key' => 'application_approved',
                 'name' => 'Application approved',
-                'description' => 'Sent when an admin approves an application.',
+                'description' => 'Sent only when information and payment approval are both complete and membership activates.',
                 'available_variables' => [
                     'applicant_name' => 'The applicant\'s representative name.',
                     'company_name' => 'The company approved for membership.',
@@ -201,12 +202,12 @@ MD,
                     'active_until' => 'The date the membership is valid until.',
                     'portal_url' => 'Link to the portal dashboard.',
                 ],
-                'subject_en' => 'Welcome to WCCIK — Your membership is approved',
-                'subject_ur' => 'ڈبلیو سی سی آئی میں خوش آمدید — آپ کی ممبرشپ منظور ہو گئی',
+                'subject_en' => 'Welcome to WCCIK, Your membership is approved',
+                'subject_ur' => 'ڈبلیو سی سی آئی میں خوش آمدید, آپ کی ممبرشپ منظور ہو گئی',
                 'body_en' => <<<'MD'
 # Welcome to WCCIK
 
-Congratulations {{ applicant_name }} — your WCCIK membership for **{{ company_name }}** has been approved.
+Congratulations {{ applicant_name }}, your WCCIK membership for **{{ company_name }}** has been approved.
 
 **Membership ID:** `{{ membership_id }}`
 **Valid until:** {{ active_until }}
@@ -219,7 +220,7 @@ MD,
                 'body_ur' => <<<'MD'
 # ڈبلیو سی سی آئی میں خوش آمدید
 
-مبارک ہو {{ applicant_name }} — **{{ company_name }}** کے لیے آپ کی ڈبلیو سی سی آئی ممبرشپ منظور ہو گئی ہے۔
+مبارک ہو {{ applicant_name }}, **{{ company_name }}** کے لیے آپ کی ڈبلیو سی سی آئی ممبرشپ منظور ہو گئی ہے۔
 
 **ممبرشپ آئی ڈی:** `{{ membership_id }}`
 **تاریخ انقضا:** {{ active_until }}

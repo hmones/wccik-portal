@@ -16,7 +16,7 @@
     <div class="meta">Submission of this form is mandatory for renewal</div>
 
     <p style="font-size: 9pt; margin: 2mm 0 3mm 0;">
-        To the Secretary General, WCCIK — kindly update the data of my member company as follows.
+        To the Secretary General, WCCIK, kindly update the data of my member company as follows.
     </p>
 
     @if($application->existing_membership_number)

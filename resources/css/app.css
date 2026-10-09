@@ -137,7 +137,7 @@
     /* WCCIK Brand Palette
        Navy       #1C4C81  → primary (AAA on white)
        Teal       #37A587  → secondary / success surfaces
-       Electric   #00FF00  → high-energy accent (decorative, focus glow — NEVER text on white)
+       Electric   #00FF00  → high-energy accent (decorative, focus glow, NEVER text on white)
        Ink        #0A0A0A  → body foreground
     */
 
@@ -157,7 +157,7 @@
     --popover: hsl(0 0% 100%);
     --popover-foreground: hsl(var(--brand-ink));
 
-    /* Primary = navy — reliable AA/AAA contrast on white */
+    /* Primary = navy, reliable AA/AAA contrast on white */
     --primary: hsl(var(--brand-navy));
     --primary-foreground: hsl(0 0% 100%);
 
@@ -185,7 +185,7 @@
     --input: hsl(214 20% 90%);
     --ring: hsl(var(--brand-navy));
 
-    /* Charts — navy, teal, electric, teal-light, navy-light */
+    /* Charts, navy, teal, electric, teal-light, navy-light */
     --chart-1: hsl(var(--brand-navy));
     --chart-2: hsl(var(--brand-teal));
     --chart-3: hsl(var(--brand-electric));
@@ -283,7 +283,7 @@
             'cv11' on;
     }
 
-    /* Accessible focus — visible for keyboard, hidden for mouse */
+    /* Accessible focus, visible for keyboard, hidden for mouse */
     :focus {
         outline: none;
     }
@@ -321,7 +321,7 @@
 }
 
 @layer components {
-    /* Skip-to-content link — appears on focus */
+    /* Skip-to-content link, appears on focus */
     .skip-link {
         @apply fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg transition-transform;
     }

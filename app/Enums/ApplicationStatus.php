@@ -16,10 +16,10 @@ enum ApplicationStatus: string
     {
         return match ($this) {
             self::Draft => 'Draft',
-            self::Submitted => 'Submitted',
+            self::Submitted => 'Pending review',
             self::AwaitingDocuments => 'Awaiting Documents',
-            self::AwaitingPayment => 'Awaiting Payment',
-            self::ReadyForApproval => 'Ready for Approval',
+            self::AwaitingPayment => 'Pending payment',
+            self::ReadyForApproval => 'Payment awaiting review',
             self::Approved => 'Approved',
             self::Rejected => 'Rejected',
         };
@@ -31,13 +31,14 @@ enum ApplicationStatus: string
             self::Draft => 'neutral',
             self::Submitted => 'info',
             self::AwaitingDocuments, self::AwaitingPayment => 'warning',
-            self::ReadyForApproval, self::Approved => 'success',
+            self::ReadyForApproval => 'info',
+            self::Approved => 'success',
             self::Rejected => 'danger',
         };
     }
 
     /**
-     * Statuses that count as "active" — an applicant may have only one
+     * Statuses that count as "active", an applicant may have only one
      * application in these states at a time.
      *
      * @return array<self>

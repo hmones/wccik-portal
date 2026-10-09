@@ -4,29 +4,29 @@ Last updated: 2026-07-31
 
 ## Installed Technologies
 
-- **PHP 8.3** / **Laravel 13** — backend framework
-- **Laravel Fortify** — authentication
-- **Inertia.js** + **Vue.js 3** — frontend framework
-- **Tailwind CSS 4** — styling
-- **Vite 8** — asset bundling
-- **MySQL 8** — primary database (Docker, port 3310)
-- **Laravel Wayfinder** — type-safe route/action bindings for frontend
-- **Laravel Chisel** — frontend component scaffolding
-- **Laravel Nova 5** — admin panel
-- **spatie/laravel-translatable** — translatable model fields (JSON per-locale storage)
-- **outl1ne/nova-translatable** — Nova field wrapper for translatable models (locales: `en`, `ur`)
-- **Laravel Boost** (dev) — developer tooling, MCP tools (`search-docs`, `database-query`, `database-schema`, `browser-logs`, `get-absolute-url`)
-- **Laravel Pail** (dev) — log tailing
-- **Laravel Pint** (dev) — PHP code style
-- **Larastan** (dev) — static analysis
+- **PHP 8.3** / **Laravel 13**, backend framework
+- **Laravel Fortify**, authentication
+- **Inertia.js** + **Vue.js 3**, frontend framework
+- **Tailwind CSS 4**, styling
+- **Vite 8**, asset bundling
+- **MySQL 8**, primary database (Docker, port 3310)
+- **Laravel Wayfinder**, type-safe route/action bindings for frontend
+- **Laravel Chisel**, frontend component scaffolding
+- **Laravel Nova 5**, admin panel
+- **spatie/laravel-translatable**, translatable model fields (JSON per-locale storage)
+- **outl1ne/nova-translatable**, Nova field wrapper for translatable models (locales: `en`, `ur`)
+- **Laravel Boost** (dev), developer tooling, MCP tools (`search-docs`, `database-query`, `database-schema`, `browser-logs`, `get-absolute-url`)
+- **Laravel Pail** (dev), log tailing
+- **Laravel Pint** (dev), PHP code style
+- **Larastan** (dev), static analysis
 
 ### Planned (not yet installed)
-- Laravel Octane (FrankenPHP) — production application server
+- Laravel Octane (FrankenPHP), production application server
 
-- spatie/laravel-medialibrary — file attachments
-- pragmarx/google2fa-laravel — TOTP 2FA
-- Laravel Horizon — queue monitoring
-- Redis — queue driver + cache (currently using database driver)
+- spatie/laravel-medialibrary, file attachments
+- pragmarx/google2fa-laravel, TOTP 2FA
+- Laravel Horizon, queue monitoring
+- Redis, queue driver + cache (currently using database driver)
 
 ## Local Development
 
@@ -80,7 +80,7 @@ resources/
 ├── lang/en/ + lang/ur/ # Bilingual label translations
 └── views/              # Blade layouts, pages, email templates
 tests/
-├── Contract/           # Contract tests — written BEFORE routes implemented
+├── Contract/           # Contract tests, written BEFORE routes implemented
 ├── Feature/            # Integration tests
 └── Unit/               # State machine, deadline calculator, ID generator
 ```
@@ -89,15 +89,15 @@ tests/
 
 - PHP: Laravel Pint (config: `pint.json`). Run `./vendor/bin/pint` before committing.
 - JS/Vue: ESLint + Prettier (configs: `eslint.config.js`, `.prettierrc`).
-- Commit hooks (Husky + lint-staged) block commits with lint errors — do not bypass.
-- Method naming: verb-oriented — `getToken`, `createApplication`, `verifyPayment`, `isApproved`.
-- No class may have more than 10 methods — split when approaching the limit.
-- All validation in Form Request classes — never in controllers.
-- All business logic in Service classes — controllers call services only.
+- Commit hooks (Husky + lint-staged) block commits with lint errors, do not bypass.
+- Method naming: verb-oriented, `getToken`, `createApplication`, `verifyPayment`, `isApproved`.
+- No class may have more than 10 methods, split when approaching the limit.
+- All validation in Form Request classes, never in controllers.
+- All business logic in Service classes, controllers call services only.
 
 ## Recent Changes
 
-- **001-wccik-membership-system**: WCCIK membership system Phase 1 — public forms (new member + renewal), bilingual EN/UR labels, Nova admin queues, manual payment verification, unique status link, email retry queue. See `specs/001-wccik-membership-system/` for full plan and data model.
+- **001-wccik-membership-system**: WCCIK membership system Phase 1, public forms (new member + renewal), bilingual EN/UR labels, Nova admin queues, manual payment verification, unique status link, email retry queue. See `specs/001-wccik-membership-system/` for full plan and data model.
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

@@ -161,7 +161,7 @@ return [
     */
 
     'features' => [
-        // Registration is intentionally disabled — admin accounts are
+        // Registration is intentionally disabled, admin accounts are
         // provisioned manually by an existing admin via tinker or seeder.
         // Removing this closes GET/POST /admin/register.
         Features::resetPasswords(),

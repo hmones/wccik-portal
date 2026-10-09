@@ -16,7 +16,7 @@ class AutosaveApplicationRequest extends FormRequest
     }
 
     /**
-     * Autosave is intentionally lenient — every field is optional so the user
+     * Autosave is intentionally lenient, every field is optional so the user
      * can type piecemeal. Final validation lives on SubmitApplicationRequest.
      */
     public function rules(): array

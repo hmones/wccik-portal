@@ -173,7 +173,7 @@ return [
         // design team provides one.
         'logo' => resource_path('img/wccik-nova-logo.svg'),
 
-        // Brand navy #1C4C81 = hsl(213, 64%, 31%) — primary admin accent.
+        // Brand navy #1C4C81 = hsl(213, 64%, 31%), primary admin accent.
         // Format: "R, G, B"
         'colors' => [
             '50' => '239, 242, 247',

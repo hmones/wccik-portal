@@ -181,6 +181,8 @@ class PortalRenewalTest extends TestCase
                 'alternate_no' => '',
                 'other_chamber_memberships' => '',
                 'payment_proof' => $file,
+                'payment_date' => today()->toDateString(),
+                'payment_method' => 'pay_order',
                 'terms_confirmed' => true,
             ])->assertRedirect(route('portal.home'));
 
@@ -188,6 +190,8 @@ class PortalRenewalTest extends TestCase
         $this->assertEquals(ApplicationType::Renewal, $app->type);
         $this->assertEquals(ApplicationStatus::Submitted, $app->status);
         $this->assertEquals($member->membership_number, $app->existing_membership_number);
+        $this->assertEquals(today()->toDateString(), $app->payment_date->toDateString());
+        $this->assertEquals('pay_order', $app->payment_method->value);
         $this->assertNotNull($app->payment_proof_path);
         Storage::disk('public')->assertExists($app->payment_proof_path);
     }
@@ -212,5 +216,36 @@ class PortalRenewalTest extends TestCase
         $this->actingAs($applicant, 'applicant')
             ->get(route('portal.renew'))
             ->assertRedirect(route('portal.home'));
+    }
+
+    public function test_submitted_application_rejects_stale_autosave_and_repeat_submission(): void
+    {
+        $member = $this->makeMember();
+        $applicant = $this->linkedApplicant($member);
+        $application = Application::factory()->create([
+            'applicant_id' => $applicant->id,
+            'type' => ApplicationType::Renewal,
+            'email' => $applicant->email,
+            'company_name' => 'Submitted company',
+        ]);
+        $this->actingAs($applicant, 'applicant')->postJson(route('portal.renew.autosave'), [
+            'company_name' => 'Unexpected change',
+        ])->assertForbidden();
+        $this->actingAs($applicant, 'applicant')->post(route('portal.renew.submit'), [
+            'membership_class' => 'corporate',
+            'industry' => 'services',
+            'authorized_representative_name' => 'Jane Doe',
+            'cnic' => '42101-1234567-8',
+            'company_name' => 'Unexpected change',
+            'company_classification' => 'proprietorship',
+            'address' => '123 Main St',
+            'district' => 'Karachi',
+            'cell' => '+923001234567',
+            'email' => $applicant->email,
+            'has_ntn' => false,
+            'terms_confirmed' => true,
+        ])->assertForbidden();
+        $this->assertDatabaseCount('applications', 1);
+        $this->assertEquals('Submitted company', $application->fresh()->company_name);
     }
 }

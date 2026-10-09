@@ -1,4 +1,4 @@
-# WCCIK Membership Portal — Progress Report
+# WCCIK Membership Portal, Progress Report
 Prepared: 1 August 2026
 For: WCCIK Management & GPP
 Subject: Development progress since the initial requirements report (June 2026)
@@ -37,7 +37,7 @@ The full development environment is operational:
 - **MySQL 8** database in a Docker container on a dedicated port to avoid conflicts with other projects
 - **Vite** for frontend asset bundling with hot module replacement during development
 - **Laravel Nova 5** admin panel installed and licensed
-- **Bilingual framework** — the application supports English and Urdu throughout, with the active language stored in the session and toggled by the user at any time without a page reload
+- **Bilingual framework**, the application supports English and Urdu throughout, with the active language stored in the session and toggled by the user at any time without a page reload
 
 A `docker-compose.yml` file ensures any developer can replicate the exact same environment in one command. A `README.md` documents the setup process from scratch.
 
@@ -46,7 +46,7 @@ A `docker-compose.yml` file ensures any developer can replicate the exact same e
 A branded landing page is live at the root URL with:
 
 - WCCIK logo, primary green and navy brand colours applied throughout
-- Three action cards — New Membership, Renew Membership, and Check Application Status — each linking to its respective flow
+- Three action cards, New Membership, Renew Membership, and Check Application Status, each linking to its respective flow
 - An information strip explaining the annual membership cycle (April–March) and the 10-day physical document requirement
 - Full bilingual support: all text renders correctly in English (LTR) and Urdu (RTL) with the appropriate Nastaliq font loaded
 - Comprehensive SEO metadata including Open Graph tags, Twitter card tags, canonical URLs, and hreflang alternates for both languages
@@ -62,15 +62,15 @@ The new member application form is live at `/apply`. It collects all fields requ
 - NTN registration status, with conditional NTN number field if registered with FBR
 
 Security measures built into the form:
-- **Rate limiting** — the same IP address can submit at most 5 applications per hour
-- **Honeypot field** — an invisible field that bots fill in; if filled, the submission is silently discarded without alerting the bot
-- **Math captcha** — the server generates a random addition question; the answer is stored server-side and validated on submission
+- **Rate limiting**, the same IP address can submit at most 5 applications per hour
+- **Honeypot field**, an invisible field that bots fill in; if filled, the submission is silently discarded without alerting the bot
+- **Math captcha**, the server generates a random addition question; the answer is stored server-side and validated on submission
 
 On successful submission, the applicant is shown a confirmation page with their unique private status link (`/status/{token}`) and a clear reminder that they have 10 days to deliver physical documents to the WCCIK office.
 
 The 10-day acknowledgement is enforced: the applicant must check a checkbox confirming they understand the physical submission deadline before the form can be submitted. The form refuses to submit without it.
 
-All form fields use floating labels and outlined inputs consistent with Material Design conventions. The form is fully bilingual — all field labels, hints, and error messages are translated into Urdu and display correctly in RTL layout.
+All form fields use floating labels and outlined inputs consistent with Material Design conventions. The form is fully bilingual, all field labels, hints, and error messages are translated into Urdu and display correctly in RTL layout.
 
 ### 4. Application Database and Data Model
 
@@ -81,14 +81,14 @@ A database migration creates the `applications` table covering all fields needed
 - NTN fields (has NTN, NTN number, NTN reason for non-registration)
 - Payment fields (method, verification status, dates, notes)
 - Admin review fields (physical form received, documents received, rejection reason)
-- A unique `status_token` (UUID) generated automatically on creation — this is the token used in the private status link
+- A unique `status_token` (UUID) generated automatically on creation, this is the token used in the private status link
 - A `membership_id` field for the generated WCCIK membership ID assigned on approval
 
 Six application statuses are defined and enforced via a PHP enum: Submitted, Awaiting Documents, Awaiting Payment, Ready for Approval, Approved, and Rejected.
 
 ### 5. Admin Panel
 
-The Nova admin panel is accessible at `/nova`. It has been branded with WCCIK's primary green colour applied across all interface elements — buttons, active states, focus rings, and links — and the WCCIK logo displayed in the sidebar.
+The Nova admin panel is accessible at `/nova`. It has been branded with WCCIK's primary green colour applied across all interface elements, buttons, active states, focus rings, and links, and the WCCIK logo displayed in the sidebar.
 
 The Applications resource in the admin panel allows admins to:
 
@@ -99,8 +99,8 @@ The Applications resource in the admin panel allows admins to:
 
 The dashboard (home screen of the admin panel) shows two live metrics:
 
-- **Total Applications** — a count with a time-range selector (Today, Month to Date, Year to Date, 30 days, 365 days, All Time) that automatically compares the selected period against the previous equivalent period
-- **Applications by Status** — a donut chart breaking down all applications by their current status, colour-coded to match the badge colours used on the resource list
+- **Total Applications**, a count with a time-range selector (Today, Month to Date, Year to Date, 30 days, 365 days, All Time) that automatically compares the selected period against the previous equivalent period
+- **Applications by Status**, a donut chart breaking down all applications by their current status, colour-coded to match the badge colours used on the resource list
 
 ### 6. Automated Testing
 
@@ -123,9 +123,9 @@ A suite of 16 automated tests covers the new member application form end to end:
 
 Three pieces of engineering infrastructure were put in place to ensure code quality is maintained as the project grows:
 
-- **Pre-commit hooks** — Husky and lint-staged run automatically before every Git commit. PHP files are auto-formatted by Laravel Pint. JavaScript, TypeScript, and Vue files are auto-formatted by ESLint and Prettier. A commit with style violations cannot be created.
-- **CI pipeline** — a GitHub Actions workflow runs on every push to every branch. It installs dependencies, runs PHP linting, JavaScript linting, format checking, TypeScript type checking, and the full test suite. A failing test or style violation blocks the pipeline.
-- **Static analysis** — Larastan (PHPStan for Laravel) is included in the project and runs as part of the test command.
+- **Pre-commit hooks**, Husky and lint-staged run automatically before every Git commit. PHP files are auto-formatted by Laravel Pint. JavaScript, TypeScript, and Vue files are auto-formatted by ESLint and Prettier. A commit with style violations cannot be created.
+- **CI pipeline**, a GitHub Actions workflow runs on every push to every branch. It installs dependencies, runs PHP linting, JavaScript linting, format checking, TypeScript type checking, and the full test suite. A failing test or style violation blocks the pipeline.
+- **Static analysis**, Larastan (PHPStan for Laravel) is included in the project and runs as part of the test command.
 
 ---
 

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('type');    // ApplicationType enum
             $table->string('status')->default(ApplicationStatus::Submitted->value);
 
-            // Applicant — shared between new member and renewal
+            // Applicant, shared between new member and renewal
             $table->string('authorized_representative_name');
             $table->string('email');
             $table->string('cnic');
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->text('address')->nullable();
             $table->string('district')->nullable();
 
-            // NTN — new member only
+            // NTN, new member only
             $table->boolean('has_ntn')->nullable();
             $table->string('ntn_number')->nullable();
             $table->string('ntn_reason')->nullable();
@@ -45,7 +45,7 @@ return new class extends Migration
             $table->text('rejection_reason')->nullable();
             $table->string('membership_id')->nullable()->unique();
 
-            // Payment — manual in Phase 1
+            // Payment, manual in Phase 1
             $table->string('payment_method')->nullable();          // PaymentMethod enum
             $table->boolean('payment_verified')->default(false);
             $table->date('payment_date')->nullable();

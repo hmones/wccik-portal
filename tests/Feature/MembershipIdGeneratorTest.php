@@ -21,7 +21,7 @@ class MembershipIdGeneratorTest extends TestCase
         $this->assertMatchesRegularExpression('/^WCCIK-\d{4}-\d{4}$/', $id);
     }
 
-    public function test_application_gets_a_membership_id_assigned_on_create(): void
+    public function test_draft_does_not_receive_a_membership_id(): void
     {
         $applicant = Applicant::create([
             'email' => 'auto@example.test',
@@ -37,8 +37,7 @@ class MembershipIdGeneratorTest extends TestCase
             'cell' => '+923001234567',
         ]);
 
-        $this->assertNotEmpty($app->membership_id);
-        $this->assertMatchesRegularExpression('/^WCCIK-\d{4}-\d{4}$/', $app->membership_id);
+        $this->assertNull($app->membership_id);
     }
 
     public function test_membership_id_cannot_be_overwritten_after_creation(): void
@@ -56,6 +55,7 @@ class MembershipIdGeneratorTest extends TestCase
             'email' => $applicant->email,
             'cell' => '+923001234567',
         ]);
+        $app->update(['membership_id' => 'WCCIK-2026-0123']);
         $originalId = $app->membership_id;
 
         $app->update(['membership_id' => 'WCCIK-9999-0001']);
@@ -63,7 +63,7 @@ class MembershipIdGeneratorTest extends TestCase
         $this->assertEquals($originalId, $app->fresh()->membership_id);
     }
 
-    public function test_two_applications_get_different_membership_ids(): void
+    public function test_generated_membership_id_does_not_reuse_an_assigned_id(): void
     {
         $a1 = Application::create([
             'type' => ApplicationType::NewMember,
@@ -80,6 +80,8 @@ class MembershipIdGeneratorTest extends TestCase
             'cell' => '+923009999999',
         ]);
 
+        $a1->update(['membership_id' => app(MembershipIdGenerator::class)->generate()]);
+        $a2->update(['membership_id' => app(MembershipIdGenerator::class)->generate()]);
         $this->assertNotEquals($a1->membership_id, $a2->membership_id);
     }
 }

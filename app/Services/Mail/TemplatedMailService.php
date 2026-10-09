@@ -12,7 +12,7 @@ use RuntimeException;
  * from the DB so admins can edit copy via Nova without a deploy. Variable
  * substitution is deliberately simple: `{{ variable_name }}` tokens (with
  * flexible whitespace) are replaced by the matching value in `$variables`.
- * No Blade evaluation of admin-authored content — keeps the surface small.
+ * No Blade evaluation of admin-authored content, keeps the surface small.
  */
 class TemplatedMailService
 {

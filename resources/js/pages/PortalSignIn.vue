@@ -46,7 +46,7 @@ function submit() {
                 >
                     {{
                         t('portal_sign_in_subtitle') ||
-                        'Enter your email. We will send a one-time code to sign you in — no password required.'
+                        'Enter your email. We will send a one-time code to sign you in, no password required.'
                     }}
                 </p>
             </div>

@@ -13,7 +13,7 @@
     @endphp
 
     <h1>WCCIK Membership Form</h1>
-    <div class="meta">To the Secretary General, WCCIK — Membership application for review</div>
+    <div class="meta">To the Secretary General, WCCIK, Membership application for review</div>
 
     <p style="font-size: 9pt; margin: 2mm 0 3mm 0;">
         Dear Madam,<br>
@@ -193,7 +193,7 @@
             <li>Company profile</li>
             <li>Proof of latest filing of Income Tax return</li>
             <li>NTN certificate</li>
-            <li>Membership fee payment slip / receipt &mdash; attach now, hand to the office with the physical form, or upload later via the portal once your documents are approved.</li>
+            <li>Membership fee payment slip / receipt &mdash; payment is requested only after the office accepts your form and supporting documents. Submit proof through the portal at that stage.</li>
             <li>Specimen signature form</li>
         </ol>
     </div>

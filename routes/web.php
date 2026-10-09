@@ -72,7 +72,7 @@ Route::post('/locale/{locale}', function (string $locale) {
     return redirect()->back();
 })->name('locale.switch');
 
-// Legacy public /apply flow — superseded by the applicant portal
+// Legacy public /apply flow, superseded by the applicant portal
 // (/portal/apply). Kept callable until a cleanup pass removes it so old
 // bookmarks and the existing feature tests keep working.
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\ApplicationType;
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Portal\AutosaveRenewalRequest;
 use App\Http\Requests\Portal\SubmitRenewalRequest;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,116 +50,131 @@ class PortalRenewalController extends Controller
 
         return Inertia::render('PortalRenew', [
             'member' => $this->serialiseMember($member),
+            'paymentMethods' => array_map(fn (PaymentMethod $method) => ['value' => $method->value, 'label' => $method->label()], PaymentMethod::cases()),
             'draft' => $active === null ? null : $this->serialiseDraft($active),
         ]);
     }
 
     public function autosave(AutosaveRenewalRequest $request): JsonResponse
     {
-        $applicant = Auth::guard('applicant')->user();
+        return DB::transaction(function () use ($request): JsonResponse {
+            $applicant = Auth::guard('applicant')->user();
+            $applicant = $applicant->newQuery()->lockForUpdate()->findOrFail($applicant->id);
+            $active = $applicant->activeApplication();
+            abort_if($active !== null && $active->status !== ApplicationStatus::Draft, 403, 'Submitted applications are locked. Contact the office for corrections.');
 
-        if ($applicant->member_id === null) {
-            return response()->json(['status' => 'unauthorized'], 403);
-        }
-
-        // Expired-only guard (also lets an existing draft keep saving).
-        $existing = $applicant->applications()
-            ->where('status', ApplicationStatus::Draft)
-            ->where('type', ApplicationType::Renewal)
-            ->exists();
-        if (! $existing && ! $applicant->member->isExpired()) {
-            return response()->json(['status' => 'forbidden'], 403);
-        }
-
-        $data = $request->validated();
-        $termsConfirmed = (bool) ($data['terms_confirmed'] ?? false);
-        unset($data['terms_confirmed']);
-
-        $application = $applicant->applications()
-            ->where('status', ApplicationStatus::Draft)
-            ->where('type', ApplicationType::Renewal)
-            ->first();
-
-        $payload = [
-            ...$data,
-            'type' => ApplicationType::Renewal,
-            'status' => ApplicationStatus::Draft,
-            'existing_membership_number' => $applicant->member->membership_number,
-            'has_ntn' => filled($data['ntn_number'] ?? null),
-            'terms_confirmed_at' => $termsConfirmed ? ($application?->terms_confirmed_at ?? now()) : null,
-        ];
-
-        if ($application === null) {
-            if ($this->payloadIsEmpty($data) && ! $termsConfirmed) {
-                return response()->json([
-                    'status' => 'noop',
-                    'application_id' => null,
-                    'saved_at' => null,
-                ]);
+            if ($applicant->member_id === null) {
+                return response()->json(['status' => 'unauthorized'], 403);
             }
 
-            $application = $applicant->applications()->create($payload);
-        } else {
-            $application->fill($payload)->save();
-        }
+            // Expired-only guard (also lets an existing draft keep saving).
+            $existing = $applicant->applications()
+                ->where('status', ApplicationStatus::Draft)
+                ->where('type', ApplicationType::Renewal)
+                ->exists();
+            if (! $existing && ! $applicant->member->isExpired()) {
+                return response()->json(['status' => 'forbidden'], 403);
+            }
 
-        return response()->json([
-            'status' => 'saved',
-            'application_id' => $application->id,
-            'saved_at' => $application->updated_at->toIso8601String(),
-        ]);
+            $data = $request->validated();
+            $termsConfirmed = (bool) ($data['terms_confirmed'] ?? false);
+            unset($data['terms_confirmed']);
+
+            $application = $applicant->applications()
+                ->where('status', ApplicationStatus::Draft)
+                ->where('type', ApplicationType::Renewal)
+                ->first();
+
+            $payload = [
+                ...$data,
+                'type' => ApplicationType::Renewal,
+                'status' => ApplicationStatus::Draft,
+                'existing_membership_number' => $applicant->member->membership_number,
+                'has_ntn' => filled($data['ntn_number'] ?? null),
+                'terms_confirmed_at' => $termsConfirmed ? ($application?->terms_confirmed_at ?? now()) : null,
+            ];
+
+            if ($application === null) {
+                if ($this->payloadIsEmpty($data) && ! $termsConfirmed) {
+                    return response()->json([
+                        'status' => 'noop',
+                        'application_id' => null,
+                        'saved_at' => null,
+                    ]);
+                }
+
+                $application = $applicant->applications()->create($payload);
+            } else {
+                $application->fill($payload)->save();
+            }
+
+            return response()->json([
+                'status' => 'saved',
+                'application_id' => $application->id,
+                'saved_at' => $application->updated_at->toIso8601String(),
+            ]);
+        });
     }
 
     public function submit(SubmitRenewalRequest $request): RedirectResponse
     {
-        $applicant = Auth::guard('applicant')->user();
+        $application = DB::transaction(function () use ($request): Application {
+            $applicant = Auth::guard('applicant')->user();
+            $applicant = $applicant->newQuery()->lockForUpdate()->findOrFail($applicant->id);
+            $active = $applicant->activeApplication();
+            abort_if($active !== null && $active->status !== ApplicationStatus::Draft, 403, 'An application is already pending review.');
 
-        if ($applicant->member_id === null) {
-            return redirect()->route('portal.home');
-        }
+            if ($applicant->member_id === null) {
+                abort(403);
+            }
 
-        $existing = $applicant->applications()
-            ->where('status', ApplicationStatus::Draft)
-            ->where('type', ApplicationType::Renewal)
-            ->exists();
-        if (! $existing && ! $applicant->member->isExpired()) {
-            return redirect()->route('portal.home');
-        }
+            $existing = $applicant->applications()
+                ->where('status', ApplicationStatus::Draft)
+                ->where('type', ApplicationType::Renewal)
+                ->exists();
+            if (! $existing && ! $applicant->member->isExpired()) {
+                abort(403);
+            }
 
-        $data = $request->validated();
-        unset($data['terms_confirmed'], $data['payment_proof']);
+            $data = $request->validated();
+            unset($data['terms_confirmed'], $data['payment_proof']);
 
-        $paymentProofPath = $request->hasFile('payment_proof')
-            ? $request->file('payment_proof')->store(
-                'payment-proofs/'.now()->format('Y/m'),
-                'public',
-            )
-            : null;
+            $paymentProofPath = $request->hasFile('payment_proof')
+                ? $request->file('payment_proof')->store(
+                    'payment-proofs/'.now()->format('Y/m'),
+                    'public',
+                )
+                : null;
 
-        $application = $applicant->applications()
-            ->where('status', ApplicationStatus::Draft)
-            ->where('type', ApplicationType::Renewal)
-            ->first();
+            $application = $applicant->applications()
+                ->where('status', ApplicationStatus::Draft)
+                ->where('type', ApplicationType::Renewal)
+                ->first();
 
-        $payload = [
-            ...$data,
-            'type' => ApplicationType::Renewal,
-            'status' => ApplicationStatus::Submitted,
-            'existing_membership_number' => $applicant->member->membership_number,
-            'has_ntn' => filled($data['ntn_number'] ?? null),
-            'submitted_at' => now(),
-            'terms_confirmed_at' => now(),
-        ];
+            $payload = [
+                ...$data,
+                'type' => ApplicationType::Renewal,
+                'status' => ApplicationStatus::Submitted,
+                'existing_membership_number' => $applicant->member->membership_number,
+                'has_ntn' => filled($data['ntn_number'] ?? null),
+                'submitted_at' => now(),
+                'terms_confirmed_at' => now(),
+            ];
 
-        if ($paymentProofPath !== null) {
-            $payload['payment_proof_path'] = $paymentProofPath;
-        }
+            if ($paymentProofPath !== null) {
+                $payload['payment_proof_path'] = $paymentProofPath;
+            } else {
+                unset($payload['payment_date'], $payload['payment_method']);
+            }
 
-        if ($application === null) {
-            $application = $applicant->applications()->create($payload);
-        } else {
-            $application->fill($payload)->save();
-        }
+            if ($application === null) {
+                $application = $applicant->applications()->create($payload);
+            } else {
+                $application->fill($payload)->save();
+            }
+
+            return $application;
+        });
 
         $application->load('applicant');
 

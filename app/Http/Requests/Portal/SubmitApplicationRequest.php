@@ -18,7 +18,7 @@ class SubmitApplicationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Required by Annex 1 — pick exactly one on both.
+            // Required by Annex 1, pick exactly one on both.
             'membership_class' => ['required', Rule::in(array_column(MembershipClass::cases(), 'value'))],
             'industry' => ['required', Rule::in(array_column(Industry::cases(), 'value'))],
 
@@ -50,10 +50,10 @@ class SubmitApplicationRequest extends FormRequest
 
             'other_chamber_memberships' => ['nullable', 'string', 'max:500'],
 
-            // Optional at submission (the applicant can also deliver the
-            // payment in person or upload later via the portal when the admin
-            // marks the application Awaiting Payment).
-            'payment_proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            // Payment is supplied from the dashboard only after form acceptance.
+            'payment_proof' => ['prohibited'],
+            'payment_date' => ['prohibited'],
+            'payment_method' => ['prohibited'],
             'terms_confirmed' => ['required', 'accepted'],
         ];
     }

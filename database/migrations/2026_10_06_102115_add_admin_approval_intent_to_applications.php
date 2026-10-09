@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Separates "admin approved the documents" from "membership is live".
  *
- *   admin_approved_at     — timestamp when the admin clicked Approve. Stored
+ *   admin_approved_at    , timestamp when the admin clicked Approve. Stored
  *                            even if payment wasn't verified yet.
- *   admin_approved_until  — the expiry date the admin picked at that time;
+ *   admin_approved_until , the expiry date the admin picked at that time;
  *                            applied to members.active_until when the
  *                            application eventually becomes fully Approved.
  *

@@ -23,7 +23,7 @@ services:
             retries: 3
             timeout: 5s
 
-    # Mailpit — local SMTP catcher that renders outgoing emails in a web UI.
+    # Mailpit, local SMTP catcher that renders outgoing emails in a web UI.
     # Opt-in: `docker compose --profile mail up -d` (so it doesn't collide if
     # you already run Mailpit from another project). Web UI: http://localhost:8025
     mailpit:

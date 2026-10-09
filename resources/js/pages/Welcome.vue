@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import ThemeToggle from '@/components/ThemeToggle.vue';
 import { useTranslation } from '@/composables/useTranslation';
 
 const { t, isUrdu } = useTranslation();
@@ -10,7 +11,7 @@ const appUrl = ((page.props as Record<string, unknown>).appUrl as string) ?? '';
 const pageTitle = computed(
     () =>
         t('welcome_meta_title') ||
-        'WCCIK Membership — Women Chamber of Commerce, Karachi',
+        'WCCIK Membership, Women Chamber of Commerce, Karachi',
 );
 const metaDescription = computed(
     () =>
@@ -88,7 +89,7 @@ function switchLocale() {
         <meta property="og:image:height" content="1200" />
         <meta
             property="og:image:alt"
-            content="Women Chamber of Commerce & Industry, Karachi — logo"
+            content="Women Chamber of Commerce & Industry, Karachi, logo"
         />
 
         <!-- Twitter -->
@@ -98,16 +99,17 @@ function switchLocale() {
         <meta name="twitter:image" :content="ogImage" />
         <meta
             name="twitter:image:alt"
-            content="Women Chamber of Commerce & Industry, Karachi — logo"
+            content="Women Chamber of Commerce & Industry, Karachi, logo"
         />
 
         <!-- Structured data: rendered as a raw script tag via Inertia Head -->
-        <!-- eslint-disable-next-line vue/no-v-text-v-html-on-component -->
+        <!-- eslint-disable vue/no-v-text-v-html-on-component -->
         <component
             :is="'script'"
             type="application/ld+json"
             v-html="organizationJsonLd"
         />
+        <!-- eslint-enable vue/no-v-text-v-html-on-component -->
     </Head>
 
     <a href="#main" class="skip-link">{{
@@ -154,6 +156,7 @@ function switchLocale() {
                     >
                         {{ t('portal_sign_in') || 'Sign in' }}
                     </a>
+                    <ThemeToggle />
 
                     <button
                         type="button"
@@ -398,7 +401,7 @@ function switchLocale() {
                         </article>
                     </div>
 
-                    <!-- Manual application fallback — secondary, less prominent -->
+                    <!-- Manual application fallback, secondary, less prominent -->
                     <div
                         class="mt-10 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30"
                     >

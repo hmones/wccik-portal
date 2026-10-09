@@ -1,10 +1,10 @@
-# WCCIK Membership Website — Requirements Implementation Phases
+# WCCIK Membership Website, Requirements Implementation Phases
 
 Source of truth: WCCIK user journey and the three WCCIK PDF forms shared for this task. Do not add extra requirements unless WCCIK confirms them.
 
 ---
 
-## Phase 1 — Core Forms, Workflows, UX/UI, Admin Review, Approvals, and Manual Payments
+## Phase 1, Core Forms, Workflows, UX/UI, Admin Review, Approvals, and Manual Payments
 
 ### Goal
 Build the first working version of the website so WCCIK can collect member information, let users download the required forms, and let admins review applications, approve or reject them, record payment verification, and generate membership IDs.
@@ -126,7 +126,7 @@ For renewals:
 
 ---
 
-## Phase 2 — Email Automation, Deadlines, Holidays, Lifecycle Rules, Automatic Payment Handling, and Verification Workflows
+## Phase 2, Email Automation, Deadlines, Holidays, Lifecycle Rules, Automatic Payment Handling, and Verification Workflows
 
 ### Goal
 Automate the timing, reminders, lifecycle rules, payment follow-up, holiday-aware deadlines, and verification workflows described in the WCCIK user journey.

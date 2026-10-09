@@ -5,18 +5,24 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        {{-- Inline script to detect system dark mode preference and apply it immediately --}}
+        {{-- Apply the browser preference before painting, avoiding a theme flash. --}}
         <script>
             (function() {
-                const appearance = '{{ $appearance ?? "system" }}';
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const system = systemDark ? 'dark' : 'light';
+                let appearance = 'system';
 
-                if (appearance === 'system') {
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-                    if (prefersDark) {
-                        document.documentElement.classList.add('dark');
+                try {
+                    const stored = localStorage.getItem('appearance');
+                    const savedSystem = localStorage.getItem('appearance-system-theme');
+                    if ((stored === 'light' || stored === 'dark') && (!savedSystem || savedSystem === system)) {
+                        appearance = stored;
                     }
-                }
+                } catch {}
+
+                const dark = appearance === 'system' ? systemDark : appearance === 'dark';
+                document.documentElement.classList.toggle('dark', dark);
+                document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
             })();
         </script>
 

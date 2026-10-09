@@ -4,6 +4,7 @@ import { computed, reactive, ref } from 'vue';
 import FormInput from '@/components/FormInput.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import FormTextarea from '@/components/FormTextarea.vue';
+import PaymentDetailsFields from '@/components/PaymentDetailsFields.vue';
 import PublicShell from '@/components/PublicShell.vue';
 import { useAutosave } from '@/composables/useAutosave';
 import { useTranslation } from '@/composables/useTranslation';
@@ -63,6 +64,7 @@ type Draft = {
 };
 
 const props = defineProps<{
+    paymentMethods: { value: string; label: string }[];
     member: Member;
     draft: Draft | null;
 }>();
@@ -112,6 +114,8 @@ const data = reactive({
 
 const paymentProof = ref<File | null>(null);
 const paymentProofName = ref<string>('');
+const paymentDate = ref('');
+const paymentMethod = ref('');
 const submitErrors = ref<Record<string, string>>({});
 
 function onFileChange(e: Event) {
@@ -204,6 +208,8 @@ async function submit() {
 
     if (paymentProof.value) {
         payload.append('payment_proof', paymentProof.value);
+        payload.append('payment_date', paymentDate.value);
+        payload.append('payment_method', paymentMethod.value);
     }
 
     router.post('/portal/renew/submit', payload, {
@@ -225,7 +231,12 @@ async function submit() {
 <template>
     <Head :title="t('renew_form_title')" />
 
-    <PublicShell back-href="/portal" :back-label="t('portal_dashboard_title')">
+    <PublicShell
+        back-href="/portal"
+        :back-label="t('portal_dashboard_title')"
+        show-sign-out
+        :before-sign-out="flushNow"
+    >
         <section
             class="relative overflow-hidden bg-brand-navy-deep px-4 py-14 text-white sm:px-6 sm:py-16"
         >
@@ -765,7 +776,7 @@ async function submit() {
                             />
                         </fieldset>
 
-                        <!-- Payment proof (not autosaved — attached on submit) -->
+                        <!-- Payment proof (not autosaved, attached on submit) -->
                         <fieldset class="mb-10">
                             <legend
                                 class="mb-6 w-full border-b border-border pb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
@@ -833,6 +844,13 @@ async function submit() {
                             >
                                 {{ submitErrors.payment_proof }}
                             </p>
+                            <PaymentDetailsFields
+                                v-if="paymentProof"
+                                v-model:payment-date="paymentDate"
+                                v-model:payment-method="paymentMethod"
+                                :options="props.paymentMethods"
+                                :errors="submitErrors"
+                            />
                         </fieldset>
 
                         <!-- Confirmation -->

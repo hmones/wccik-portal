@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,7 +26,7 @@ class PortalApplicationController extends Controller
     {
         $applicant = Auth::guard('applicant')->user();
 
-        // Already a WCCIK member — the dashboard shows them their membership
+        // Already a WCCIK member, the dashboard shows them their membership
         // record (or routes to renew). New-member application does not apply.
         if ($applicant->member_id !== null) {
             return redirect()->route('portal.home');
@@ -34,7 +35,7 @@ class PortalApplicationController extends Controller
         $active = $applicant->activeApplication();
 
         // If the active application is already past Draft, send them to the
-        // dashboard — they can't edit a submitted application.
+        // dashboard, they can't edit a submitted application.
         if ($active !== null && $active->status !== ApplicationStatus::Draft) {
             return redirect()->route('portal.home');
         }
@@ -47,93 +48,96 @@ class PortalApplicationController extends Controller
 
     public function autosave(AutosaveApplicationRequest $request): JsonResponse
     {
-        $applicant = Auth::guard('applicant')->user();
-        $data = $request->validated();
+        return DB::transaction(function () use ($request): JsonResponse {
+            $applicant = Auth::guard('applicant')->user();
+            $applicant = $applicant->newQuery()->lockForUpdate()->findOrFail($applicant->id);
+            $active = $applicant->activeApplication();
+            abort_if($active !== null && $active->status !== ApplicationStatus::Draft, 403, 'Submitted applications are locked. Contact the office for corrections.');
+            abort_if($applicant->member_id !== null, 403);
+            $data = $request->validated();
 
-        $termsConfirmed = (bool) ($data['terms_confirmed'] ?? false);
-        unset($data['terms_confirmed']);
+            $termsConfirmed = (bool) ($data['terms_confirmed'] ?? false);
+            unset($data['terms_confirmed']);
 
-        $hasNtn = array_key_exists('has_ntn', $data) ? (bool) $data['has_ntn'] : null;
-        if ($hasNtn === false) {
-            $data['ntn_number'] = null;
-        }
-
-        $application = $applicant->applications()
-            ->where('status', ApplicationStatus::Draft)
-            ->first();
-
-        $payload = [
-            ...$data,
-            'email' => $applicant->email,
-            'type' => ApplicationType::NewMember,
-            'status' => ApplicationStatus::Draft,
-            'terms_confirmed_at' => $termsConfirmed ? ($application?->terms_confirmed_at ?? now()) : null,
-        ];
-
-        if ($application === null) {
-            // Materialise the draft row on first save, only if there is
-            // *something* worth saving — avoids empty-row spam from a blur
-            // on an untouched field.
-            if ($this->payloadIsEmpty($data) && ! $termsConfirmed) {
-                return response()->json([
-                    'status' => 'noop',
-                    'application_id' => null,
-                    'saved_at' => null,
-                ]);
+            $hasNtn = array_key_exists('has_ntn', $data) ? (bool) $data['has_ntn'] : null;
+            if ($hasNtn === false) {
+                $data['ntn_number'] = null;
             }
 
-            $application = $applicant->applications()->create($payload);
-        } else {
-            $application->fill($payload)->save();
-        }
+            $application = $applicant->applications()
+                ->where('status', ApplicationStatus::Draft)
+                ->first();
 
-        return response()->json([
-            'status' => 'saved',
-            'application_id' => $application->id,
-            'saved_at' => $application->updated_at->toIso8601String(),
-        ]);
+            $payload = [
+                ...$data,
+                'email' => $applicant->email,
+                'type' => ApplicationType::NewMember,
+                'status' => ApplicationStatus::Draft,
+                'terms_confirmed_at' => $termsConfirmed ? ($application?->terms_confirmed_at ?? now()) : null,
+            ];
+
+            if ($application === null) {
+                // Materialise the draft row on first save, only if there is
+                // *something* worth saving, avoids empty-row spam from a blur
+                // on an untouched field.
+                if ($this->payloadIsEmpty($data) && ! $termsConfirmed) {
+                    return response()->json([
+                        'status' => 'noop',
+                        'application_id' => null,
+                        'saved_at' => null,
+                    ]);
+                }
+
+                $application = $applicant->applications()->create($payload);
+            } else {
+                $application->fill($payload)->save();
+            }
+
+            return response()->json([
+                'status' => 'saved',
+                'application_id' => $application->id,
+                'saved_at' => $application->updated_at->toIso8601String(),
+            ]);
+        });
     }
 
     public function submit(SubmitApplicationRequest $request): RedirectResponse
     {
-        $applicant = Auth::guard('applicant')->user();
+        $application = DB::transaction(function () use ($request): Application {
+            $applicant = Auth::guard('applicant')->user();
+            $applicant = $applicant->newQuery()->lockForUpdate()->findOrFail($applicant->id);
+            $active = $applicant->activeApplication();
+            abort_if($active !== null && $active->status !== ApplicationStatus::Draft, 403, 'An application is already pending review.');
+            abort_if($applicant->member_id !== null, 403);
 
-        $application = $applicant->applications()
-            ->where('status', ApplicationStatus::Draft)
-            ->first();
+            $application = $applicant->applications()
+                ->where('status', ApplicationStatus::Draft)
+                ->first();
 
-        $data = $request->validated();
-        $data['has_ntn'] = (bool) $data['has_ntn'];
-        if (! $data['has_ntn']) {
-            $data['ntn_number'] = null;
-        }
-        unset($data['terms_confirmed'], $data['payment_proof']);
+            $data = $request->validated();
+            $data['has_ntn'] = (bool) $data['has_ntn'];
+            if (! $data['has_ntn']) {
+                $data['ntn_number'] = null;
+            }
+            unset($data['terms_confirmed'], $data['payment_proof'], $data['payment_date'], $data['payment_method']);
 
-        $paymentProofPath = $request->hasFile('payment_proof')
-            ? $request->file('payment_proof')->store(
-                'payment-proofs/'.now()->format('Y/m'),
-                'public',
-            )
-            : null;
+            $payload = [
+                ...$data,
+                'email' => $applicant->email,
+                'type' => ApplicationType::NewMember,
+                'status' => ApplicationStatus::Submitted,
+                'submitted_at' => now(),
+                'terms_confirmed_at' => now(),
+            ];
 
-        $payload = [
-            ...$data,
-            'email' => $applicant->email,
-            'type' => ApplicationType::NewMember,
-            'status' => ApplicationStatus::Submitted,
-            'submitted_at' => now(),
-            'terms_confirmed_at' => now(),
-        ];
+            if ($application === null) {
+                $application = $applicant->applications()->create($payload);
+            } else {
+                $application->fill($payload)->save();
+            }
 
-        if ($paymentProofPath !== null) {
-            $payload['payment_proof_path'] = $paymentProofPath;
-        }
-
-        if ($application === null) {
-            $application = $applicant->applications()->create($payload);
-        } else {
-            $application->fill($payload)->save();
-        }
+            return $application;
+        });
 
         $application->load('applicant');
 
@@ -144,7 +148,7 @@ class PortalApplicationController extends Controller
 
     private function notifySubmission(Application $application): void
     {
-        // The submission is already persisted — if sending the confirmation
+        // The submission is already persisted, if sending the confirmation
         // fails (SMTP down, template missing, PDF error), log and continue
         // instead of 500ing on the user. The applicant still sees their
         // Submitted status in the portal.

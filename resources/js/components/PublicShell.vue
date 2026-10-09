@@ -1,13 +1,37 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import ThemeToggle from '@/components/ThemeToggle.vue';
 import { useTranslation } from '@/composables/useTranslation';
 
 const { t, isUrdu } = useTranslation();
 
-defineProps<{
+const props = defineProps<{
     backHref?: string;
     backLabel?: string;
+    showSignOut?: boolean;
+    beforeSignOut?: () => Promise<void>;
 }>();
+
+const signingOut = ref(false);
+
+async function signOut() {
+    if (signingOut.value) {
+        return;
+    }
+
+    signingOut.value = true;
+    await props.beforeSignOut?.();
+    router.post(
+        '/portal/sign-out',
+        {},
+        {
+            onFinish: () => {
+                signingOut.value = false;
+            },
+        },
+    );
+}
 
 function switchLocale() {
     router.post(
@@ -33,7 +57,7 @@ function switchLocale() {
             role="banner"
         >
             <div
-                class="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6"
+                class="mx-auto flex min-h-20 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6"
             >
                 <a
                     href="/"
@@ -52,7 +76,7 @@ function switchLocale() {
                     </span>
                 </a>
                 <nav
-                    class="flex items-center gap-2 sm:gap-3"
+                    class="flex max-w-full flex-wrap items-center justify-end gap-2 sm:gap-3"
                     :aria-label="t('primary_navigation') || 'Primary'"
                 >
                     <a
@@ -62,6 +86,16 @@ function switchLocale() {
                     >
                         {{ backLabel || t('apply_back') }}
                     </a>
+                    <button
+                        v-if="showSignOut"
+                        type="button"
+                        :disabled="signingOut"
+                        class="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                        @click="signOut"
+                    >
+                        {{ t('portal_sign_out') }}
+                    </button>
+                    <ThemeToggle />
                     <button
                         type="button"
                         class="inline-flex items-center gap-2 rounded-md border border-brand-navy/20 bg-background px-4 py-2 text-xs font-semibold tracking-wider text-brand-navy uppercase transition-colors hover:bg-brand-navy hover:text-white dark:border-brand-teal/40 dark:text-brand-teal dark:hover:bg-brand-teal dark:hover:text-background"

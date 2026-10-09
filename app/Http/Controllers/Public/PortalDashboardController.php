@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\Applicant;
 use App\Models\Application;
@@ -15,10 +16,10 @@ use Inertia\Response;
  * The dashboard shows exactly one state and one recommended action.
  *
  * Precedence (first match wins):
- *   1. application_in_progress — any draft/submitted/under-review app
- *   2. expired_member          — linked member whose active_until is past
- *   3. active_member           — linked member whose active_until is future
- *   4. new_applicant           — no linked member, no application
+ *   1. application_in_progress, any draft/submitted/under-review app
+ *   2. expired_member         , linked member whose active_until is past
+ *   3. active_member          , linked member whose active_until is future
+ *   4. new_applicant          , no linked member, no application
  */
 class PortalDashboardController extends Controller
 {
@@ -32,6 +33,7 @@ class PortalDashboardController extends Controller
         [$state, $payload] = $this->resolveJourney($applicant, $active, $member);
 
         return Inertia::render('PortalDashboard', [
+            'paymentMethods' => array_map(fn (PaymentMethod $method) => ['value' => $method->value, 'label' => $method->label()], PaymentMethod::cases()),
             'applicant' => [
                 'email' => $applicant->email,
                 'name' => $applicant->name,
@@ -58,7 +60,7 @@ class PortalDashboardController extends Controller
         }
 
         if ($member !== null && $member->isActive()) {
-            return ['active_member', ['member' => $this->serialiseMember($member)]];
+            return ['active_member', ['member' => $this->serialiseMember($member, $applicant->applications()->where('status', 'approved')->latest('id')->first())]];
         }
 
         return ['new_applicant', []];
@@ -78,14 +80,23 @@ class PortalDashboardController extends Controller
             'company_name' => $application->company_name,
             'submitted_at' => $application->submitted_at?->toIso8601String(),
             'updated_at' => $application->updated_at->toIso8601String(),
-            'has_payment_proof' => $application->payment_proof_path !== null,
+            'has_payment_proof' => filled($application->payment_proof_path),
+            'payment_date' => $application->payment_date?->format('Y-m-d'),
+            'payment_method' => $application->payment_method?->value,
+            'can_submit_payment' => $application->canSubmitPayment(),
+            'payment_instructions' => $application->payment_instructions,
+            'payment_submitted_at' => $application->payment_submitted_at?->toIso8601String(),
+            'payment_verified' => $application->payment_verified,
+            'information_approved' => $application->admin_approved_at !== null,
+            'physical_form_received' => $application->physical_form_received,
+            'documents_received' => $application->documents_received,
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function serialiseMember(Member $member): array
+    private function serialiseMember(Member $member, ?Application $latestApproval = null): array
     {
         return [
             'membership_number' => $member->membership_number,
@@ -94,6 +105,7 @@ class PortalDashboardController extends Controller
             'email' => $member->email,
             'membership_class' => $member->membership_class?->value,
             'active_until' => $member->active_until?->toIso8601String(),
+            'payment_processed_at' => $latestApproval?->payment_processed_at?->toDateString(),
         ];
     }
 }

@@ -12,7 +12,7 @@ use Mpdf\Mpdf;
  * Renders a filled WCCIK application form as a PDF.
  *
  * The visual layout is a HTML/CSS recreation (not a byte-identical overlay of
- * the original printed form). This keeps the templates maintainable — layout
+ * the original printed form). This keeps the templates maintainable, layout
  * changes are a Blade edit, not a hand-measured coordinate shuffle.
  */
 class ApplicationPdfService
